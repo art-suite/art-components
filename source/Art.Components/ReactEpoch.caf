@@ -1,0 +1,22 @@
+import &StandardImport, &ArtEpochedState
+
+&ArtFoundation extract globalCount
+
+class ReactEpoch extends Epoch
+  @singletonClass()
+
+  addChangingComponent: (component)->
+    @queueItem component
+
+  processEpochItems: (changingComponents)->
+    globalCount
+      "" ReactEpoch processEpochItems
+      stackTime ->
+        each component in-array changingComponents
+          component._applyPendingState()
+
+# bind to GlobalEpochCycle if loaded
+Neptune.Art.Engine?.Core?.GlobalEpochCycle.singleton.includeReact
+  ReactEpoch.singleton
+
+ReactEpoch

@@ -1,0 +1,3 @@
+import &StandardImport
+suite: ->
+  test 'Components' -> assert.eq 1, 1

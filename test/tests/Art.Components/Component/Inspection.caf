@@ -1,0 +1,72 @@
+import &StandardImport
+
+suite:
+  basic: ->
+    test "inspectedName" ->
+      class MyComponent extends Component
+        render: ->
+          TestElement
+            key: :normalWrapper
+
+      instance = MyComponent foo: 123
+      assert.isString instance.inspectedName
+
+    test "inspectedPath" ->
+      class MyComponent extends Component
+        render: ->
+          TestElement
+            key: :normalWrapper
+
+      instance = MyComponent foo: 123
+      assert.isString instance.inspectedPath
+
+
+  subcomponents: ->
+    test "none" ->
+      class MyComponent extends Component
+        render: ->
+          TestElement
+            key: :normalWrapper
+
+      instance = MyComponent foo: 123
+      assert.eq instance.subcomponents, []
+
+    test "two" ->
+      class MySubcomponent extends Component
+        render: ->
+          TestElement
+            key: :normalWrapper
+
+      class MyComponent extends Component
+        render: ->
+          TestElement
+            MySubcomponent()
+            MySubcomponent()
+
+      instance = MyComponent()._instantiate()
+      assert.eq instance.subcomponents.length, 2
+
+    test "don't recurse into wrapper-components" ->
+      class MySubcomponent extends Component
+        render: ->
+          TestElement
+            key: :normalWrapper
+
+      class WrapperComponent extends Component
+        render: ->
+          TestElement
+            @props.children
+
+      class MyComponent extends Component
+        render: ->
+          TestElement
+            MySubcomponent()
+            WrapperComponent
+              MySubcomponent()
+              MySubcomponent()
+
+      instance = MyComponent()._instantiate()
+      assert.eq instance.subcomponents.length, 2
+
+
+

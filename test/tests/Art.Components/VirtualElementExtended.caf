@@ -1,0 +1,264 @@
+import &StandardImport
+
+suite:
+  nonInstantiated: ->
+    test :empty ->
+      ve = TestElement()
+      ve instanceof VirtualElement
+      assert.eq ve.props, {}
+      assert.eq ve.children, []
+      assert.doesNotExist ve.element
+
+    test :withProps ->
+      ve = TestElement foo: :bar
+      assert.eq ve.props, foo: :bar
+      assert.eq ve.children, []
+      assert.doesNotExist ve.element
+
+    test :twoSetsOfProps ->
+      a = TestElement {a:1}, {b:2}
+      assert.eq a.props, a:1, b:2
+
+    test :withChildren ->
+      ve = TestElement TestElement()
+      assert.eq ve.props, {}
+      assert.eq ve.children.length, 1
+      assert.doesNotExist ve.element
+
+    test :withChildrenStructure ->
+      a = TestElement
+        name: :parent
+        if false
+          TestElement name: :child1
+        TestElement   name: :child2
+        []
+          null
+          TestElement name: :child3
+          false
+          TestElement name: :child4
+
+      assert.eq
+        :child2 :child3 :child4
+        array child in a.children with child.props.name
+
+    test :intermingledPropsAndChildren ->
+      a = TestElement
+        a: 1
+        TestElement name: :child1
+        b: 2
+        TestElement name: :child2
+
+      assert.eq a.props, a:1 b:2
+      assert.eq
+        :child1 :child2
+        array child in a.children with child.props.name
+
+  instantiate: ->
+    test "instantiate VirtualElement with props", ->
+      TestElement size: 123
+      ._instantiate {}
+      .onNextReady (a)->
+        assert.eq
+          a.element.elementType
+          :TestElement
+        assert.eq a.element.props.size, 123
+
+    test "instantiate VirtualElement with children", ->
+      TestElement
+        name: :parent
+        TestElement name: :child1
+        TestElement name: :child2
+
+      ._instantiate {}
+      .onNextReady (a)->
+        assert.eq
+          :child1 :child2
+          array child in a.element.children with child.props.name
+
+  _canUpdateFrom: ->
+    test "_canUpdateFrom matching elementClasses >> true", ->
+      a = TestElement name: :foo
+      b = TestElement name: :bar
+      assert.eq true, a._canUpdateFrom b
+
+    test "_canUpdateFrom missmatched elementClasses >> false", ->
+      a = TestElement name: :foo
+      b = TestOtherElement name: :bar
+      assert.eq false, a._canUpdateFrom b
+
+    test "_canUpdateFrom missmatched keys >> false", ->
+      a = TestElement key: :foo
+      b = TestElement key: :bar
+      assert.eq false, a._canUpdateFrom b
+
+  _updateFrom: ->
+    test "_updateFrom changed props", ->
+      TestElement name: :foo
+      ._instantiate {}
+      ._updateFrom TestElement name: :bar
+      .onNextReady (a)->
+        assert.eq a.element.props.name, :bar
+
+    test "_updateFrom: same children reuses children's array and children's VitualElement instances", ->
+      a = TestElement
+        name: :foo
+        TestElement name: :child1
+        TestElement name: :child2
+
+      b = TestElement
+        name: :bar
+        TestElement name: :child1
+        TestElement name: :child2
+
+      a._instantiate {}
+      initialElements = array child in a.children with child.element
+      initialChildren = a.children
+      a._updateFrom b
+      a.onNextReady ->
+        assert.eq a.element.props.name, :bar
+        assert.ok initialChildren == a.children
+        assert.eq initialElements, array child in a.children with child.element
+        assert.eq
+          :child1 :child2
+          array child in a.children with child.props.name
+
+    test "_updateFrom: children with only props changed reuses children's array and children's VitualElement instances", ->
+      a = TestElement
+        name: :foo
+        TestElement name: :child1
+        TestElement name: :child2
+      b = TestElement
+        name: :bar
+        TestElement name: :child3
+        TestElement name: :child4
+
+      a._instantiate {}
+      initialelements = array child in a.children with child.element
+      initialChildren = a.children
+      a._updateFrom b
+      a.onNextReady ->
+        assert.eq a.element.props.name, :bar
+        assert.ok initialChildren == a.children
+        assert.eq initialelements, array child in a.children with child.element
+        assert.eq
+          :child3 :child4
+          array child in a.children with child.props.name
+
+    test "_updateFrom: children with keys can reuse with swapped order", ->
+      a = TestElement
+        name: :foo
+        TestElement key: :child1
+        TestElement key: :child2
+
+      b = TestElement
+        name: :bar
+        TestElement key: :child2
+        TestElement key: :child1
+
+      a._instantiate {}
+      [element1, element2] = array child in a.children with child.element
+      initialChildren = a.children
+
+      a._updateFrom b
+      a.onNextReady ->
+        assert.eq a.element.props.name, :bar
+        assert.ok initialChildren != a.children
+        assert.eq initialChildren.length, a.children.length
+        assert.eq
+          element2, element1
+          array child in a.children with child.element
+
+        assert.eq
+          :child2 :child1
+          array child in a.children with child.props.key
+
+    test "_updateFrom: children without keys and same type won't swap order", ->
+      a = TestElement
+        name: "foo"
+        TestElement name: :child1
+        TestElement name: :child2
+      b = TestElement
+        name: "bar"
+        TestElement name: :child2
+        TestElement name: :child1
+
+      a._instantiate {}
+      [element1, element2] = array child in a.children with child.element
+      initialChildren = a.children
+      a._updateFrom b
+      a.onNextReady ->
+        assert.eq a.element.props.name, :bar
+        assert.ok initialChildren == a.children
+        assert.eq initialChildren.length, a.children.length
+        assert.eq
+          element1, element2
+          array child in a.children with child.element
+
+        assert.eq
+          :child2 :child1
+          array child in a.children with child.props.name
+
+    test "_updateFrom: children without keys but different types can swap order", ->
+      a = TestElement
+        name: :foo
+        TestElement       name: :child1
+        TestOtherElement  name: :child2
+
+      b = TestElement
+        name: :bar
+        TestOtherElement  name: :child2
+        TestElement       name: :child1
+
+      a._instantiate {}
+      [element1, element2] = array child in a.children with child.element
+      initialChildren = a.children
+      a._updateFrom b
+      .onNextReady ->
+        assert.eq a.element.props.name, :bar
+        assert.ok initialChildren != a.children
+        assert.eq initialChildren.length, a.children.length
+        assert.eq
+          element2, element1
+          array child in a.children with child.element
+
+        assert.eq
+          :child2 :child1
+          array child in a.children with child.props.name
+
+    test "_updateFrom: add child", ->
+      a = TestElement
+        name: "foo"
+        TestElement name: :child1
+
+      b = TestElement
+        name: "bar"
+        TestElement name: :child1
+        TestElement name: :child2
+
+      a._instantiate {}
+      ._updateFrom b
+      .onNextReady ->
+        assert.eq
+          :child1 :child2
+          array child in a.children with child.props.name
+
+    test "_updateFrom: remove child", ->
+      a = TestElement
+        name: :foo
+        TestElement name: :child1
+        TestElement name: :child2
+        TestElement name: :child3
+
+      b = TestElement
+        name: :bar
+        TestElement name: :child1
+        TestElement name: :child3
+
+      a._instantiate {}
+      ._updateFrom b
+      .onNextReady ->
+        assert.eq
+          :child1 :child3
+          array child in a.children with child.props.name
+
+

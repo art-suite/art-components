@@ -1,0 +1,46 @@
+import &StandardImport
+
+renderRecursiveStructure = (depth = 2) ->
+  if depth == 0
+    TestElement()
+  else
+    TestElement
+      renderRecursiveStructure depth - 1
+      renderRecursiveStructure depth - 1
+
+suite:
+  withoutRelease: ->
+    test
+      "simulated render 1 element"
+      ->
+        TestElement()
+
+    test
+      "simulated render 7 element structures"
+      ->
+        renderRecursiveStructure()
+
+    test
+      "simulated render 15 element structures"
+      ->
+        renderRecursiveStructure 3
+
+  withRelease: ->
+    test
+      "simulated render 1 element"
+      ->
+        TestElement()
+        .release()
+
+    test
+      "simulated render 7 element structures"
+      ->
+        renderRecursiveStructure()
+        .release()
+
+    test
+      "simulated render 15 element structures"
+      ->
+        renderRecursiveStructure 3
+        .release()
+        renderRecursiveStructure 3

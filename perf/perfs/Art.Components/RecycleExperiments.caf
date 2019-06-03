@@ -1,0 +1,144 @@
+import &StandardImport
+
+
+
+pool = []
+churn = []
+newRe = (props, children) ->
+
+  if re = pool.pop()
+    re.props = props
+    re.children = children
+    re
+  else
+    new RecycleableElement props, children
+
+recycleRe = (re) -> pool.push re
+
+
+renderRecursiveStructure = (depth = 2) ->
+  if depth == 0
+    newRe()
+  else
+    newRe
+      null,
+      []
+        renderRecursiveStructure depth - 1
+        renderRecursiveStructure depth - 1
+
+if true
+  # &ObjectTreeFactory extract
+  &ArtObjectTreeFactory/source/ArtObjectTreeFactory/ObjectTreeFactory extract
+    createObjectTreeFactory
+
+  TestElement = createObjectTreeFactory
+    newRe
+
+else
+  _children = _props = _oneProps = null
+
+  mergePropsInto = (_into, source) ->
+    object from-object source into _into
+
+
+  preprocessElement = (a) -> a
+  Factory = ->
+  applyArg = (el) ->
+    if rubyTrue preprocessElement el, Factory
+      switch el.constructor
+      when Object
+        unless _oneProps
+          _oneProps = el
+
+        else
+          unless _props
+            mergePropsInto
+              _props = {}
+              _oneProps
+
+          mergePropsInto _props, el
+
+      when Array
+        each el2 from-array el
+          applyArg el2
+
+      else
+        _children ?= []
+        .push el
+
+    null
+
+  TestElement = (args...)->
+    _children = _props = _oneProps = undefined
+
+    each el from-array args
+      applyArg el
+
+    newRe _props || _oneProps, _children
+
+# TestElement = (args...) ->
+#   newRe null, args
+
+renderRecursiveStructureFactory = (depth = 2) ->
+  if depth == 0
+    TestElement()
+  else
+    TestElement
+      renderRecursiveStructureFactory depth - 1
+      renderRecursiveStructureFactory depth - 1
+
+class RecycleableElement
+
+  constructor: (@props, @children) ->
+
+  recycle: ->
+    each child in-array @children
+      child.recycle()
+    @props = @children = null
+    recycleRe @
+
+suite:
+  normal: ->
+    benchmark "1 RecycleableElement" ->
+      newRe()
+
+    benchmark "7 RecycleableElement" ->
+      renderRecursiveStructure()
+
+    benchmark "15 RecycleableElement" ->
+      renderRecursiveStructure 3
+
+  recycled: ->
+    benchmark "1 RecycleableElement" ->
+      newRe()
+      .recycle()
+
+    benchmark "7 RecycleableElement" ->
+      renderRecursiveStructure()
+      .recycle()
+
+    benchmark "15 RecycleableElement" ->
+      renderRecursiveStructure 3
+      .recycle()
+
+  normalTreeFactory: ->
+    benchmark "1 RecycleableElement" ->
+      TestElement()
+
+    benchmark "7 RecycleableElement" ->
+      renderRecursiveStructureFactory()
+
+    benchmark "15 RecycleableElement" -> renderRecursiveStructureFactory 3
+
+  recycledTreeFactory: ->
+    benchmark "1 RecycleableElement" ->
+      TestElement()
+      .recycle()
+
+    benchmark "7 RecycleableElement" ->
+      renderRecursiveStructureFactory()
+      .recycle()
+
+    benchmark "15 RecycleableElementA" -> renderRecursiveStructureFactory(3).recycle()
+    benchmark "15 RecycleableElementB" -> renderRecursiveStructureFactory(3).recycle()
+    benchmark "15 RecycleableElementC" -> renderRecursiveStructureFactory(3).recycle()

@@ -1,0 +1,46 @@
+import &StandardImport
+
+suite: ->
+  testAllFooValues = (instance, expectedFooValue, context = "unknown context") ->
+    expected = foo: expectedFooValue
+    assert.selectedEq expected, instance.state, "state-prop: #{context}"
+    assert.selectedEq expected, instance.element.props, "concrete-element-prop: #{context}"
+
+  testAllFooValuesOnNextReady = (instance, expectedFooValue, context) ->
+    instance.onNextReady()
+    .then -> testAllFooValues instance, expectedFooValue, context
+
+  chainedTest :basicStateField ->
+    class MyComponent extends Component
+      render: -> TestElement {} @state.foo
+
+    instance = MyComponent()
+    ._instantiate()
+    testAllFooValues instance, undefined
+    instance
+
+  .tapTest
+    "@setState :foo :barValue" (instance)->
+      instance.state extract foo
+      instance.setState :foo :barValue
+      testAllFooValues instance, foo, "not updated until next epoch"
+      testAllFooValuesOnNextReady instance, :barValue, "should update now"
+
+    "@setState foo: :bazValue" (instance)->
+      instance.state extract foo
+      instance.setState foo: :bazValue
+      testAllFooValues instance, foo, "not updated until next epoch"
+      testAllFooValuesOnNextReady instance, :bazValue, "should update now"
+
+    "@setState (state) -> foo: state.foo + :Bam >> transforms applied at epoch-update" (instance)->
+      instance.state extract foo
+      instance.setState (state) -> foo: state.foo + :Bam
+      instance.setState (state) -> foo: state.foo + :Boom
+      testAllFooValues instance, foo, "not updated until next epoch"
+      testAllFooValuesOnNextReady instance, "#{foo}BamBoom", "should update now"
+
+    "@setState (state) -> bar: 123 >> fully replaces state" (instance)->
+      instance.state extract foo
+      instance.setState (state) -> bar: 123
+      testAllFooValues instance, foo, "not updated until next epoch"
+      testAllFooValuesOnNextReady instance, undefined, "should update now"

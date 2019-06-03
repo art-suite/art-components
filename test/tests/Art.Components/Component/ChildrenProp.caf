@@ -1,0 +1,24 @@
+import &StandardImport
+
+suite: ->
+  test "children passed to component-factory become @props.children", ->
+    class Wrapper extends Component
+      render: ->
+        TestElement
+          key: "wrapper"
+          @props.children
+
+    class MyComponent extends Component
+      render: ->
+        Wrapper
+          TestElement key: "red"
+          TestElement key: "blue"
+
+    c = MyComponent()
+    ._instantiate()
+    .onNextReady ->
+      assert.eq c.element.props.key, :wrapper
+      assert.eq
+        :red :blue
+        array child in c.element.children
+          child.key

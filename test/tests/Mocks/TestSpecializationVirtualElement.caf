@@ -1,0 +1,15 @@
+import &StandardImport
+
+## EXAMPLE specialization
+  This specialization is intened mostly as an example of how
+  to write a specialization.
+
+class TestSpecializationVirtualElement extends VirtualElementExtended
+
+  _setProperty:   (k, v)  -> @element.props[k] = v
+  _resetProperty: (k)     -> delete @element.props[k]
+
+  _setElementChildren: (childElements) -> @element.children = childElements
+
+  _newElement: (elementType, props, children)->
+    new &TestSpecializationElement elementType, props, children, @

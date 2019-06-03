@@ -1,0 +1,18 @@
+import &StandardImport
+
+suite: ->
+  test "clone component" ->
+    class MyComponent extends Component
+      render: ->
+        TestElement
+          key: :normalWrapper
+
+    instance = MyComponent foo: 123
+    instanceClone= instance.clone()
+    assert.eq
+      instance.props
+      instanceClone.props
+
+    assert.eq
+      instance.class
+      instanceClone.class

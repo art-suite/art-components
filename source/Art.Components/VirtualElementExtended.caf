@@ -1,0 +1,76 @@
+import &StandardImport, &ArtObjectTreeFactory, {}
+  &VirtualElement
+  &VirtualElementPool
+
+&Helpers.objectTreeFactoryOptions extract postProcessProps
+
+class VirtualElementExtended extends VirtualElement
+  @abstractClass()
+
+  @postCreateConcreteClass: ->
+    @virtualElementPool = new VirtualElementPool @
+
+    super
+
+  @createVirtualElementFactories: (elementClassNames) ->
+    createObjectTreeFactories
+      class: @
+      elementClassNames
+      (elementClassName) ->
+        (props, children) ->
+          # new @virtualElementSpecializationClass elementClassName, props, children
+          # new @virtualElementPool.virtualElementClass elementClassName, props, children
+          @virtualElementPool.checkout
+            elementClassName
+            postProcessProps props
+            children
+
+  ###############
+    TODO
+  ###############
+  checkin: ->
+    @class.virtualElementPool.checkin @
+
+  ###############
+    OVERRIDES
+  ###############
+  _setProperty:   (k, v) -> throw new Error "TODO: override _setProperty"
+  _resetProperty: (k)    -> @_setProperty k, null
+
+  ## _updateElementProps
+    EFFECT: @props has been set to the newProps if they changed
+    OUT: true if props changed
+  _updateElementProps: (newProps) ->
+
+    oldPropsLength = @getPropsLength()
+    oldProps = @props
+
+    noChangeCount = 0
+    noChange = -> noChangeCount++
+
+    # objectDiff: (o1, o2, added, removed, changed, nochange, eq = defaultEq, o2KeyCount) ->
+    virtualElementTemp = @
+    newPropsLength = @setPropsLength objectDiff
+      newProps
+      oldProps
+      addedOrChanged  # added
+      removed         # removed
+      addedOrChanged  # changed
+      noChange
+      propsEq
+
+    virtualElementTemp = null
+
+    if newPropsLength == noChangeCount && oldPropsLength == newPropsLength
+      false
+    else
+      @props = @_rawProps = newProps
+      true
+
+
+  ###############
+    PRIVATE
+  ###############
+  virtualElementTemp = null
+  addedOrChanged  = (k, v)  -> virtualElementTemp._setProperty k, v
+  removed         = (k)     -> virtualElementTemp._resetProperty k

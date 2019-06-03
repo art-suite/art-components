@@ -1,0 +1,116 @@
+import &StandardImport
+
+renderRecursiveStructure = (depth = 2) ->
+  if depth == 0
+    TestElement()
+  else
+    TestElement
+      renderRecursiveStructure depth - 1
+      renderRecursiveStructure depth - 1
+
+suite:
+  tests: ->
+    test "simulated render" ->
+      TestElement()
+      .release()
+
+    test "simulated render renderRecursiveStructure 7-element" ->
+      renderRecursiveStructure()
+      .release()
+      renderRecursiveStructure()
+      .release()
+
+  baseline: ->
+    a = 1
+    benchmark
+      "count"
+      -> a++
+
+    test "count result" -> log count: a
+
+  simulatedRenders:
+
+    withoutRelease: ->
+      @timeout 10000
+      benchmark
+        "simulated render 1 element"
+        ->
+          TestElement()
+        warmUpDuration: 2
+
+      benchmark
+        "simulated render 7 element structures"
+        ->
+          renderRecursiveStructure()
+        warmUpDuration: 2
+
+      benchmark
+        "simulated render 15 element structures"
+        ->
+          renderRecursiveStructure 3
+        # duration: 2
+        warmUpDuration: 4
+
+    withRelease: ->
+      @timeout 10000
+      benchmark
+        "simulated render 1 element"
+        ->
+          TestElement()
+          .release()
+        warmUpDuration: 2
+
+
+      benchmark
+        "simulated render 7 element structures"
+        ->
+          renderRecursiveStructure()
+          .release()
+        warmUpDuration: 2
+
+      benchmark
+        "simulated render 15 element structures"
+        ->
+          renderRecursiveStructure 3
+          .release()
+        # duration: 2
+        warmUpDuration: 4
+
+
+    # withoutRelease2: ->
+    #   @timeout 10000
+    #   # benchmark
+    #   #   "simulated render 1 element"
+    #   #   ->
+    #   #     TestElement()
+    #   #   warmUpDuration: 2
+
+    #   benchmark
+    #     "simulated render 15 element structures"
+    #     ->
+    #       renderRecursiveStructure 3
+    #     # duration: 2
+    #     # warmUpDuration: 2
+
+    # withRelease2: ->
+    #   @timeout 10000
+    #   # benchmark
+    #   #   "simulated render 1 element"
+    #   #   ->
+    #   #     TestElement()
+    #   #     .release()
+    #   #   warmUpDuration: 2
+
+
+    #   # benchmark
+    #   #   "simulated render 7 element structures"
+    #   #   ->
+    #   #     renderRecursiveStructure()
+    #   #     .release()
+    #   #   warmUpDuration: 2
+
+    #   benchmark
+    #     "simulated render 15 element structures"
+    #     ->
+    #       renderRecursiveStructure 3
+    #       .release()

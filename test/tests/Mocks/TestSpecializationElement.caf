@@ -1,0 +1,4 @@
+import &StandardImport
+
+class TestSpecializationElement
+  constructor: (@elementType, @props, @children, @creatingVirtualElement) ->

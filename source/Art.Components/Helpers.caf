@@ -1,0 +1,48 @@
+import &StandardImport, &ReactEpoch, {} &Component
+
+getMergedTextPropValue = (oldValue, v) ->
+  if oldValue?
+    if isArray oldValue
+          oldValue.concat v
+    else  [] oldValue, v
+  else v
+
+resetReactPerfCounters: ->
+  &VirtualElement.resetCounters()
+  Component.resetCounters()
+
+getReactPerfCounters: ->
+  VirtualElement: &VirtualElement.getCounters()
+  Component:      &Component.getCounters()
+
+instantiateTopComponent: (componentInstance, bindToOrCreateNewParentElementProps) ->
+  console.warn "React.instantiateTopComponent is DEPRICATED. Use: componentInstance.instantiateAsTopComponent"
+  componentInstance.instantiateAsTopComponent bindToOrCreateNewParentElementProps
+
+onNextReady: (callback) -> reactEpoch.onNextReady callback
+
+objectTreeFactoryOptions:
+
+  # NOTE: postProcessProps is ignored by objectTreeFactory - we must apply it oursevles
+  postProcessProps: (props) ->
+    if v = props?._textFromString
+      props.text = getMergedTextPropValue props.text, v
+      delete props._textFromString
+    props
+
+  mergePropsInto: (_into, props) ->
+    each v, k from-object props
+      if k == :_textFromString
+        _into.text = getMergedTextPropValue _into.text, v
+      else
+        _into[k] = v
+
+    _into
+
+  preprocessElement: (element, Factory) ->
+    if isString element
+      log.warn "ArtReact: string children are DEPRICATED. Use text: 'string'. Currently rendering: #{&VirtualNode.currentlyRendering?.inspectedName || 'none'}. Factory: #{Factory.inspect()}"
+      _textFromString: element
+
+    else
+      element

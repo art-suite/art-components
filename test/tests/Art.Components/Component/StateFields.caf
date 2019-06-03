@@ -1,0 +1,105 @@
+import &StandardImport
+
+suite: ->
+  testAllFooValues = (instance, expectedFooValue, context = "unknown context") ->
+    expected = foo: expectedFooValue
+    assert.selectedEq expected, instance, "getter: #{context}"
+    assert.selectedEq expected, instance.state, "state-prop: #{context}"
+    assert.selectedEq expected, instance.element.props, "concrete-element-prop: #{context}"
+
+  testAllFooValuesOnNextReady = (instance, expectedFooValue) ->
+    instance.onNextReady()
+    .then -> testAllFooValues instance, expectedFooValue
+
+  chainedTest :basicStateField ->
+    class MyComponent extends Component
+      @stateFields
+        foo: :fooValue
+
+      render: ->
+        TestElement {} @foo
+
+    instance = MyComponent()
+    ._instantiate()
+    testAllFooValues instance, :fooValue
+    instance
+
+  .tapTest
+    "@foo = :barValue" (instance)->
+      instance.foo = :barValue
+      testAllFooValues instance, :fooValue
+      testAllFooValuesOnNextReady instance, :barValue
+
+    "@setFoo :bazValue" (instance)->
+      instance.setFoo :bazValue
+      testAllFooValuesOnNextReady instance, :bazValue
+
+    "@clearFoo()" (instance)->
+      instance.clearFoo()
+      testAllFooValuesOnNextReady instance, null
+
+  chainedTest :booleanStateField ->
+    class MyComponent extends Component
+      @stateFields
+        foo: false
+
+      render: ->
+        TestElement {} @foo
+
+    instance = MyComponent()
+    ._instantiate()
+    testAllFooValues instance, false
+    instance
+
+  .tapTest
+    "@foo = true" (instance)->
+      instance.foo = true
+      testAllFooValues instance, false, "only updated next epoch"
+      testAllFooValuesOnNextReady instance, true
+
+    "@foo = any-truthy-value becomes true" (instance)->
+      instance.foo = "hi"
+      testAllFooValuesOnNextReady instance, true
+
+    "@foo = any-falsy-value becomes true" (instance)->
+      instance.foo = null
+      testAllFooValuesOnNextReady instance, false
+
+    "@setFoo true" (instance)->
+      instance.setFoo true
+      testAllFooValuesOnNextReady instance, true
+
+    "@clearFoo() => false" (instance)->
+      instance.clearFoo()
+      testAllFooValuesOnNextReady instance, false
+
+    "@triggerFoo() => true" (instance)->
+      instance.triggerFoo()
+      testAllFooValuesOnNextReady instance, true
+
+    "@triggerFoo(anything-even-if-falsy) => true" (instance)->
+      instance.triggerFoo false
+      testAllFooValuesOnNextReady instance, true
+
+  test "and mixins", ->
+    FooMixin = (superClass) ->
+      class Foo extends superClass
+        @abstractClass()
+        @stateFields foo: "foo"
+
+    class MyComponent1 extends FooMixin Component
+      @stateFields bar: "bar"
+      render: -> TestElement()
+
+    class MyComponent2 extends FooMixin Component
+      @stateFields baz: "baz"
+      render: -> TestElement()
+
+    c = MyComponent1()
+    assert.doesNotExist c.state
+    assert.eq c._instantiate().state, foo: "foo", bar: "bar"
+
+    # c = MyComponent2()
+    # assert.eq c.state, {}
+    # assert.eq c._instantiate().state, foo: "foo", baz: "baz"
+

@@ -1,0 +1,12 @@
+import &StandardImport, &ReactEpoch, {} &Component
+
+getMergedTextPropValue = (oldValue, v) ->
+  if oldValue?
+    if isArray oldValue
+          oldValue.concat v
+    else  [] oldValue, v
+  else v
+
+[]
+  [] Component, :createAndInstantiateTopComponent :createComponentFactory
+  &Helpers

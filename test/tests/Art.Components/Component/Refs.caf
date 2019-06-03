@@ -1,0 +1,96 @@
+import &StandardImport
+
+suite: ->
+  test :refs ->
+    rr = null
+    br = null
+    class MyComponent extends Component
+      render: ->
+        TestElement
+          rr = TestElement key: :redRectangle   draw: :red
+          br = TestElement key: :blueRectangle  draw: :blue
+
+    c = MyComponent()
+    ._instantiate()
+    assert.eq true, c.refs.redRectangle == rr
+    assert.eq true, c.refs.blueRectangle == br
+
+  test "duplicate refs warning", ->
+    rr = null
+    br = null
+    class MyComponent extends Component
+      render: ->
+        TestElement {},
+          rr = TestElement key: :redRectangle   draw: :red
+          br = TestElement key: :redRectangle   draw: :blue
+
+    c = MyComponent()
+    ._instantiate()
+    c.refs
+
+  test "refs should not reach into sub-components", ->
+    class SubComponent extends Component
+      render: ->
+        TestElement
+          key: :inSubcomponent
+
+    class MyComponent extends Component
+      render: ->
+        TestElement
+          SubComponent key: :subComponentInParent
+          TestElement key: :inParent
+
+    c = MyComponent()
+    ._instantiate()
+    assert.eq
+      Object.keys(c.refs).sort()
+      :inParent :subComponentInParent
+
+    assert.eq
+      Object.keys c.refs.subComponentInParent.refs
+      [] :inSubcomponent
+
+  test "refs to children passed to component should be bound to the component they are rendered in", ->
+    rr = null
+    br = null
+    class Wrapper extends Component
+      render: ->
+        TestElement
+          key: :wrapper
+          @props.children
+
+    class MyComponent extends Component
+      render: ->
+        Wrapper {},
+          rr = TestElement key: :redRectangle   draw: :red
+          br = TestElement key: :blueRectangle  draw: :blue
+
+    myComponent = MyComponent()
+    ._instantiate()
+    wrapper = myComponent._virtualElements
+
+    assert.eq
+      myComponent
+      wrapper.renderedIn
+      "" myComponent is the renderedIn for wrapper
+
+    assert.eq
+      wrapper
+      wrapper._virtualElements.renderedIn
+      "" wrapper is the renderedIn for it's top-most TestElement
+
+    assert.eq
+      myComponent
+      wrapper.findElements(:redRectangle)[0].renderedIn
+      "" myComponent is the renderedIn for TestElement-redRectangle
+
+    assert.eq
+      Object.keys(myComponent._virtualElements.refs).sort()
+      [] :wrapper
+
+    assert.eq
+      Object.keys(myComponent.refs).sort()
+      :blueRectangle :redRectangle
+
+    assert.eq true, myComponent.refs.redRectangle == rr
+    assert.eq true, myComponent.refs.blueRectangle == br

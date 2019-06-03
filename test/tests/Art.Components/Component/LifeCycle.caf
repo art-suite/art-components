@@ -1,0 +1,137 @@
+import &StandardImport
+
+suite:
+  mounting: ->
+    test "componentWillMount", ->
+      new Promise (resolve) ->
+        rendered = false
+        componentWillMounted = false
+        class MyComponent extends Component
+          componentWillMount: ->
+            componentWillMounted = true
+            assert.eq rendered, false
+
+          render: ->
+            assert.eq componentWillMounted, true, "componentWillMounted should be true at this point"
+            rendered = true
+            resolve()
+            TestElement name: "child"
+
+        MyComponent().instantiateAsTopComponent()
+
+    test "componentWillUnmount nested inside VirtualTestElement", ->
+      new Promise (resolve) ->
+        rendered = false
+        altRendered = false
+        componentWillMounted = false
+        componentWillUnmounted = false
+
+        class WrapperComponent extends Component
+          @stateFields
+            includeComponent: true
+
+          render: ->
+            TestElement
+              name: :wrapper
+              if @state.includeComponent
+                MyComponent()
+              else
+                assert.eq rendered,               true,   "" rendered should be true at this point
+                assert.eq componentWillMounted,   true,   "" componentWillMounted should be true at this point
+                assert.eq componentWillUnmounted, false,  "" componentWillUnmounted should be false at this point
+                altRendered = true
+                TestElement name: :stub
+
+        class MyComponent extends Component
+          componentWillMount: ->
+            assert.eq componentWillUnmounted,     false,  "" componentWillUnmounted should be false at this point
+            assert.eq rendered,                   false,  "" rendered should be false at this point
+            componentWillMounted = true
+
+          componentWillUnmount: ->
+            assert.eq rendered,                   true,   "" rendered should be true at this point
+            assert.eq componentWillMounted,       true,   "" componentWillMounted should be true at this point
+            assert.eq altRendered,                true,   "" altRendered should be true at this point
+            componentWillUnmounted = true
+            resolve()
+
+          render: ->
+            assert.eq componentWillMounted,       true,   "" componentWillMounted should be true at this point
+            assert.eq componentWillUnmounted,     false,  "" componentWillUnmounted should be false at this point
+            rendered = true
+            TestElement name: :child
+
+        wc = WrapperComponent().instantiateAsTopComponent()
+        .onNextReady -> wc.setState includeComponent: false
+
+  preprocessProps: ->
+    test "instantiate with preprocessProps", ->
+      class MyComponent extends Component
+        preprocessProps: (props) -> name:"Hi #{props.name || "John Doe"}!"
+        render: ->
+          TestElement name: @props.name
+
+      c = MyComponent name: "Sally"
+      c._instantiate()
+      assert.instanceof TestSpecializationElement, c.element
+      assert.eq c.element.props.name, "Hi Sally!"
+
+    test "_updateFrom with preprocessProps", ->
+      class MyComponent1 extends Component
+        preprocessProps: (props) -> name:"Hi #{props.name || "John Doe"}!"
+        render: -> TestElement name: @props.name
+
+      a = MyComponent1 name: "foo"
+      ._instantiate()
+      b = MyComponent1 name: "bar"
+      a._updateFrom b
+      assert.eq a.props.name, "Hi bar!"
+
+  preprocessState: ->
+    test "instantiate with preprocessState", ->
+      new Promise (resolve) ->
+        class MyComponent extends Component
+          preprocessState: (state) -> merge state, greeting: "Hi #{@props.name}!"
+          render: ->
+            assert.eq @state.greeting, "Hi Sally!"
+            resolve()
+            TestElement()
+
+        c = MyComponent name: "Sally"
+        c._instantiate()
+
+    test "preprocessState after preprocessProps", ->
+      new Promise (resolve) ->
+        class MyComponent extends Component
+          preprocessProps: (props) -> @setState name: props.name; props
+          preprocessState: (state) ->
+            assert.neq state.name, @state.name
+            merge state, greeting: "Hi #{state.name}!"
+          render: ->
+            assert.eq @state.greeting, "Hi Sally!"
+            resolve()
+            TestElement()
+
+        c = MyComponent name: "Sally"
+        c._instantiate()
+
+    test "_updateFrom with preprocessState", ->
+      new Promise (resolve) ->
+        class MyComponent extends Component
+          @stateFields initialName: null
+          preprocessProps: (props) ->
+            @initialName ?= props.name
+            props
+
+          preprocessState: (state) ->
+            merge state, greeting: "Hi #{@props.name}!"
+
+          render: ->
+            assert.eq @state.greeting, "Hi #{@props.name}!"
+            resolve() if @state.greeting == "Hi John!" && @state.initialName == "Sally"
+            TestElement()
+
+        c1 = MyComponent name: :Sally
+        ._instantiate()
+        .onNextReady ->
+          c1._updateFrom MyComponent name: :John

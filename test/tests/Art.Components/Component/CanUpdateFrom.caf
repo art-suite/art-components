@@ -1,0 +1,38 @@
+import &StandardImport
+
+suite: ->
+  test "_canUpdateFrom matching Component-classes == true", ->
+    class MyComponent1 extends Component
+      render: -> TestElement name: @props.name
+
+    a = MyComponent1 name: "foo"
+    b = MyComponent1 name: "bar"
+    assert.eq true, a._canUpdateFrom b
+
+
+  test "_canUpdateFrom missmatched Component-classes == false", ->
+    class MyComponent1 extends Component
+      render: -> TestElement name: @props.name
+    class MyComponent2 extends Component
+      render: -> TestElement name: @props.name
+
+    a = MyComponent1 name: "foo"
+    b = MyComponent2 name: "bar"
+    assert.eq false, a._canUpdateFrom b
+
+  test "_canUpdateFrom matching Component-classes == false", ->
+    class MyComponent1 extends Component
+      render: -> TestElement name: "baz"
+
+    a = MyComponent1 key: "foo"
+    b = MyComponent1 key: "bar"
+    assert.eq false, a._canUpdateFrom b
+
+  test "_canUpdateFrom Component and VirtualElement-classes == false", ->
+    class MyComponent1 extends Component
+      render: -> TestElement name: "baz"
+
+    a = MyComponent1 key: "foo"
+    b = TestElement {}
+    assert.eq false, a._canUpdateFrom b
+    assert.eq false, b._canUpdateFrom a

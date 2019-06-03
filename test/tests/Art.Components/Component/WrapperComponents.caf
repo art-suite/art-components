@@ -1,0 +1,175 @@
+import &StandardImport
+
+suite:
+  virtualElementChildren: ->
+
+    chainedTest "virtual-element children" ->
+      class MyWrapper extends Component
+        @stateFields
+          text: :foo
+
+        render: ->
+          TestElement
+            key: :componentWrapper
+            TestTextElement {} @text
+            @props.children
+
+      class MyComponent extends Component
+        render: ->
+          MyWrapper
+            TestElement
+              key: :normalWrapper
+              TestElement key: :innerMost
+
+      myComponent = MyComponent()
+      ._instantiate()
+      .onNextReady().then -> myComponent
+
+    .tapTest
+      :firstRender (myComponent) ->
+        assert.eq
+          myComponent.findElements "innerMost"
+          .length
+          1
+
+        assert.eq
+          myComponent.findElements(:innerMost)[0].renderedIn
+          myComponent
+
+        tt = myComponent.findElements(:innerMost)[0]
+        # log {} tt.renderedIn, tt.inspectedName
+
+        # log "setText myComponent:#{myComponent.inspectedName} #{myComponent.uniqueId}"
+        # myComponent._virtualElements.setText :bar
+        myComponent.onNextReady()
+
+      :secondRender (myComponent) ->
+        assert.eq
+          myComponent.findElements "innerMost"
+          .length
+          1
+
+  directComponentChildren: ->
+    chainedTest "direct component children" ->
+      class MySimpleComponent extends Component
+        render: ->
+          TestElement()
+
+      class MyWrapper extends Component
+        @stateFields
+          text: :foo
+
+        render: ->
+          TestElement
+            key: :componentWrapper
+            TestTextElement {} @text
+            @props.children
+
+      class MyComponent extends Component
+        render: ->
+          MyWrapper
+            MySimpleComponent()
+
+      myComponent = MyComponent()
+      ._instantiate()
+      .onNextReady().then -> myComponent
+
+    .tapTest
+      :firstRender (myComponent) ->
+        assert.eq
+          myComponent.find "MySimpleComponent"
+          .length
+          1
+        myComponent._virtualElements.setText :bar
+        myComponent.onNextReady()
+
+      :secondRender (myComponent) ->
+        assert.eq
+          myComponent.find "MySimpleComponent"
+          .length
+          1
+
+  indirectComponentChildren: ->
+    chainedTest "indirect component children" ->
+      class MySimpleComponent extends Component
+        render: ->
+          TestElement()
+
+      class MyWrapper extends Component
+        @stateFields
+          text: :foo
+
+        render: ->
+          TestElement
+            key: :componentWrapper
+            TestTextElement {} @text
+            @props.children
+
+      class MyComponent extends Component
+        render: ->
+          MyWrapper
+            TestElement
+              MySimpleComponent()
+
+      myComponent = MyComponent()
+      ._instantiate()
+      .onNextReady().then -> myComponent
+
+    .tapTest
+      "firstRender"
+      (myComponent) ->
+        assert.eq
+          myComponent.find "MySimpleComponent"
+          .length
+          1
+        myComponent._virtualElements.setText :bar
+        myComponent.onNextReady()
+
+      "secondRender"
+      (myComponent) ->
+        assert.eq
+          myComponent.find "MySimpleComponent"
+          .length
+          1
+
+  virtualElementsPassedAsProps: ->
+    chainedTest ->
+
+      class MyWrapper extends Component
+        @stateFields
+          numElements: 1
+
+        render: ->
+          TestElement
+            key: :componentWrapper
+            @props.first
+            array i til @numElements
+              TestElement key: i
+            @props.last
+
+      class MyComponent extends Component
+        render: ->
+          MyWrapper
+            first:  TestElement key: :firstElementKey
+            last:   TestElement key: :secondElementKey
+
+      myComponent = MyComponent()
+      ._instantiate()
+      .onNextReady().then -> myComponent
+
+    .tapTest
+      "firstRender"
+      (myComponent) ->
+        assert.eq
+          myComponent.findElements "firstElementKey"
+          .length
+          1
+        myComponent._virtualElements.setNumElements 2
+        myComponent.onNextReady()
+
+      "secondRender"
+      (myComponent) ->
+        assert.eq
+          myComponent.findElements "firstElementKey"
+          .length
+          1

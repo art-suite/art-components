@@ -1,0 +1,20 @@
+import &StandardImport
+
+# SEE NOTES.MD about releasable elements
+
+class VirtualElementPool extends BaseClass
+
+  constructor: (@virtualElementClass)->
+    @_pool = []
+
+  checkout: (elementClassName, props, children) ->
+    if @_pool.length > 0
+      # log "VirtualElementPool reuse: #{peek(@_pool).inspectedNameAndId}"
+      @_pool.pop().init         elementClassName, props, children
+    else
+      out = new @virtualElementClass elementClassName, props, children
+      # log "VirtualElementPool new: #{out.inspectedNameAndId}"
+      out
+
+  checkin: (virtualElement) ->
+    @_pool.push virtualElement

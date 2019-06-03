@@ -1,0 +1,84 @@
+import &StandardImport
+
+suite: ->
+  test "_updateFrom basic", ->
+    class MyComponent1 extends Component
+      render: -> TestElement key: @props.key
+
+    a = MyComponent1 key: "foo"
+    ._instantiate()
+
+    b = MyComponent1 key: "bar"
+    a._updateFrom b
+    assert.eq a.props.key, "bar"
+
+  test "_updateFrom add component", ->
+    class MyComponent1 extends Component
+      render: -> TestElement key: @props.key
+
+    class MyWrapperComponent extends Component
+      @stateFields added: false
+
+      render: ->
+        TestElement
+          key: :root
+          TestElement   key: :child1
+          MyComponent1  key: :child2 if @added
+          TestElement   key: :child3
+
+    c = MyWrapperComponent()
+    ._instantiate()
+    .onNextReady()
+    .then ->
+      c.added = true
+      c.onNextReady()
+    .then ->
+      assert.eq [:child1 :child2 :child3], array child in c.refs.root.children with child.props.key
+      assert.eq [:child1 :child2 :child3], array child in c.refs.root.element.children with child.props.key
+
+  test "_updateFrom add component", ->
+    class MyComponent1 extends Component
+      render: -> TestElement key: @props.key
+
+    class MyWrapperComponent extends Component
+      @propFields :includeChild2
+
+      render: ->
+        TestElement
+          key: :root
+          TestElement       key: "child1"
+          MyComponent1  key: "child2" if @includeChild2
+          TestElement       key: "child3"
+
+    a = MyWrapperComponent includeChild2: false
+    ._instantiate()
+
+    b = MyWrapperComponent includeChild2: true
+    a._updateFrom b
+    a.onNextReady()
+    .then ->
+      assert.eq [:child1 :child2 :child3], array child in a.refs.root.children with child.props.key
+      assert.eq [:child1 :child2 :child3], array child in a.refs.root.element.children with child.props.key
+
+  test "_updateFrom remove component", ->
+    class MyComponent1 extends Component
+      render: -> TestElement key: @props.key
+
+    class MyWrapperComponent extends Component
+      @propFields :includeChild2
+
+      render: ->
+        TestElement
+          key: :root
+          TestElement key: "child1"
+          MyComponent1 key: "child2" if @includeChild2
+          TestElement key: "child3"
+
+    a = MyWrapperComponent includeChild2: true
+    ._instantiate()
+
+    b = MyWrapperComponent includeChild2: false
+    a._updateFrom b
+    a.onNextReady ->
+      assert.eq ["child1", "child3"], array child in a.refs.root.children with child.props.key
+      assert.eq ["child1", "child3"], array child in a.refs.root.element.children with child.props.key

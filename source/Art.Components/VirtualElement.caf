@@ -1,0 +1,306 @@
+import &StandardImport
+{virtualElementPoolEnabled} = VirtualNode = &VirtualNode
+
+devMode = &DevMode
+
+class VirtualElement extends VirtualNode
+  @abstractClass()
+
+  @resetCounters: ->
+    @created      = 0
+    @instantiated = 0
+    @reused       = 0
+    @released     = 0
+
+  @resetCounters()
+
+  @getCounters: -> {@created, @instantiated}
+
+  #####################
+  # CONSTRUCTION
+  #####################
+  constructor: (elementClassName, props, children) ->
+    VirtualElement.created++
+    super props
+    @_initVirtualElement elementClassName, props, children
+
+  init: (elementClassName, props, children) ->
+    VirtualElement.reused++
+    @_initVirtualNode props
+    @_initVirtualElement elementClassName, props, children
+    @
+
+  #####################
+  # Getters
+  #####################
+  @getter "elementClassName released",
+    children: ->
+      if !@_children
+        throw new Error
+          log.warn if @_released
+            "Critical Failure: VirtualElement<#{@inspectedName}-#{@uniqueId}> was released! Should not be accessing children!"
+          else
+            "Internal Failure: VirtualElement<#{@inspectedName}-#{@uniqueId}> has no children!"
+
+      @_children
+
+  #####################
+  # Inspection
+  #####################
+  @getter
+    inspectedName: ->
+      {key, elementClassName} = @
+      "Virtual-#{elementClassName}#{if key then "-" + key  else ''}"
+
+    inspectedObjects: ->
+      "#{@inspectedName}": @inspectedObjectsContents
+
+    inspectedObjectsContents: ->
+      if @children.length > 0
+        compactFlattenAllFast {@props}, toInspectedObjects @children
+      else {@props}
+
+  findElements: (pattern, options, matches = []) ->
+    if foundMatch = @testMatchesPattern pattern
+      matches.push @
+
+    if !foundMatch || options?.findAll
+      each child in @children
+        child.findElements pattern, options, matches
+    matches
+
+  eachInComponent: (f) ->
+    super
+    each child in @children
+      child.eachInComponent f
+    null
+
+  #####################################
+  # Specialization Overrides
+  # Override these for custom ArtReact specializations (like ArtEngine)
+  #####################################
+  ### withElement
+    EFFECT: execute the function 'f' with the Concrete-Element associated with this VirtualElement.
+    IN: f = (concreteElement) -> x
+    OUT: promise.then (x) ->
+
+    OVERRIDE: OK
+
+    PURPOSE: This is provided for the web-worker React so you can access the concrete element even though it is
+      in another context. In that case, "f" will be serialized and any closure will be lost...
+  withElement: (f) -> new Promise (resolve) => resolve f @element
+
+  ## _updateElementProps
+    EFFECT: @props has been updated and any props on the Concrete Element have been update
+    OUT: true if props changed
+  _updateElementProps: (newProps) ->
+
+  ## _setElementChildren
+    IN: childrenElement: array of concrete elements to be all the children for this element
+  _setElementChildren: (childElements) ->
+
+  ## _newElement
+    OUT: new concrete element instance
+  _newElement: (elementClassName, props, childElements, bindToOrCreateNewParentElementProps)->
+    elementClassName
+
+  _newErrorElement: -> null
+
+  ##################
+  # Specialization Helpers
+  ##################
+  # EFFECT: @props has been set to the newProps if they changed
+  # OUT: true if props changed
+  _updateElementPropsHelper: (newProps, addedOrChanged, removed) ->
+    oldPropsLength = @getPropsLength()
+    oldProps = @props
+
+    noChangeCount = 0
+    noChange = -> noChangeCount++
+
+    # objectDiff: (o1, o2, added, removed, changed, nochange, eq = defaultEq, o2KeyCount) ->
+    newPropsLength = @setPropsLength objectDiff newProps, oldProps, addedOrChanged, removed, addedOrChanged, noChange, propsEq
+
+    if newPropsLength == noChangeCount && oldPropsLength == newPropsLength
+      false
+    else
+      @props = @_rawProps = newProps
+      true
+
+  ########################
+  ########################
+  # PRIVATE
+  ########################
+  ########################
+
+  ##########################################
+  # VirtualNode Overrides
+  ##########################################
+  clone: ->
+    new VirtualElement @elementClassName, @props,
+      array child in @children
+        child.clone()
+
+  _captureRefs: (component) ->
+    if component == @renderedIn
+      if (key = @key)?
+        log.warn "Duplicate key #{key} found in #{@inspectedPath}" if component._refs[key]
+        component._refs[key] = @
+
+      each child in @children
+        child._captureRefs component
+
+    null
+
+  _resetAllProps: ->
+    VirtualElement.released++
+    @_resetVirtualNodeProps()
+
+    each child in-array @_children
+      child.release()
+
+    @_elementClassName = @_children = null
+
+  emptyChildren = []
+  _initVirtualElement: (elementClassName, props, children) ->
+    @_elementClassName = elementClassName
+    @_children = children ? emptyChildren
+    @_validateChildren children if devMode
+
+  #################
+  # Update
+  #################
+  _extractOldChildToUpdate: (child)->
+    find oldChild, i in @children
+      if oldChild?._canUpdateFrom child
+        @children[i] = null
+        oldChild
+
+  _canUpdateFrom: (b)->
+    @elementClassName == b.elementClassName &&
+    @key == b.key
+
+  ### _fastUpdateChildren
+    OUT:
+      if no Nodes were added, removed or changed "types"
+        EFFECT: _updateFrom newChild for all oldChildren
+        true
+      else
+        EFFECT: NONE
+        # use _slowUpdateChildren instead
+        false
+  _fastUpdateChildren: (fromNode) ->
+    newChildren = fromNode.children
+    oldChildren = @children
+    return false unless oldChildren.length == newChildren.length
+
+    each oldChild, i in-array oldChildren
+      return false unless oldChild._canUpdateFrom newChildren[i]
+
+    each oldChild, i in-array oldChildren
+      oldChild._updateFrom newChildren[i]
+    true
+
+  _slowUpdateChildren: (fromNode) ->
+
+    oldChildren = @children
+
+    newChildren = array newChild from-array fromNode.children
+      if oldChild = @_extractOldChildToUpdate newChild
+        oldChild._updateFrom newChild
+      else
+        newChild._instantiate @_parentComponent
+
+    each child in oldChildren when child
+      child._unmount()
+      child.release() if virtualElementPoolEnabled
+
+    fromNode._children = null if virtualElementPoolEnabled
+
+    @_setElementChildren array child in-array newChildren with child.element
+    @_children = newChildren
+
+  ### _updateChildren
+    OUT: true if children changed
+      if true, element.setChildren was called
+      if false, the children individually may change, but
+        this element's children are the same set
+  ###
+  _updateChildren: (newNode) ->
+    if @_fastUpdateChildren newNode
+      false
+    else
+      @_slowUpdateChildren newNode
+      true
+
+  _unmount: ->
+    each child in @children
+      child._unmount()
+
+  # returns this
+  _updateFrom: (newNode) ->
+    return unless @element
+
+    if newNode._released  then log.error "updating from released VirtualElement: #{newNode.inspectedName}"
+    if @released          then log.error "updating at released VirtualElement: #{@inspectedName}"
+
+    if newNode == @ then throw new Error "_updateFrom self!!!"
+    propsChanged    = @_updateElementProps newNode.props
+    childrenChanged = @_updateChildren newNode
+
+    ### VirtualElementPool:
+      don't recurse on children -
+      @_updateChildren will checkin the children that need checked in
+      and NOT checkin the ones which will still be used
+    if virtualElementPoolEnabled
+      newNode._children = null
+      newNode.release()
+
+    # globalCount "ReactVirtualElement_UpdateFromTemporaryVirtualElement_#{if propsChanged || childrenChanged then 'Changed' else 'NoChange'}"
+
+    @
+
+  #####################
+  # Instantiate
+  #####################
+
+  ### _instantiate
+    create element or componentInstance
+    fully generate Virtual-AIM subbranch
+    fully create all AIM elements
+    OUT: this
+  _instantiate: (parentComponent, bindToOrCreateNewParentElementProps) ->
+    if parentComponent != @renderedIn
+      log "VirtualElement clone on instantiate: #{parentComponent?.inspectedNameAndId} #{@renderedIn?.inspectedNameAndId}"
+      # return @clone()._instantiate parentComponent, bindToOrCreateNewParentElementProps
+    super
+    VirtualElement.instantiated++
+    # globalCount "ReactVirtualElement_Instantiated"
+
+    array child, childIndex in-array @children into instantiatedChildren = [] when
+      try
+        child._instantiate parentComponent
+        true
+
+      catch error
+        errors = true
+        log.error "Error instantiating child": {}
+            childIndex
+            error
+            child
+            @elementClassName
+            @props
+
+        @_newErrorElement()
+        false
+
+      child.element
+
+
+    @element = @_newElement
+      @elementClassName
+      @props
+      instantiatedChildren
+      bindToOrCreateNewParentElementProps
+
+    @
