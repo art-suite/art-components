@@ -46,9 +46,9 @@ suite: ->
       render: ->
         TestElement
           key: :root
-          TestElement       key: "child1"
+          TestElement   key: "child1"
           MyComponent1  key: "child2" if @includeChild2
-          TestElement       key: "child3"
+          TestElement   key: "child3"
 
     a = MyWrapperComponent includeChild2: false
     ._instantiate()

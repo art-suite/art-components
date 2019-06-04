@@ -59,7 +59,7 @@ emptyProps = {}
   Thoughts: I think this is OK, though this changes what "unmounted" means. I just
   fixed a bug where @state got altered without going through preprocessState first
   when state changes after the component was unmounted. How should I TEST this???
-class Component extends &PropFieldsMixin &StateFieldsMixin InstanceFunctionBindingMixin VirtualNode
+class Component extends &StateFieldsMixin InstanceFunctionBindingMixin VirtualNode
   @abstractClass()
 
   @nonBindingFunctions:
@@ -245,6 +245,56 @@ class Component extends &PropFieldsMixin &StateFieldsMixin InstanceFunctionBindi
       @_virtualElements.findElements pattern, options, matches
 
     matches
+
+
+  ##############################
+    propFields declaration
+  ##############################
+  @extendableProperty
+    propFields: null
+
+    # custom extender here only so propFiles can be initialized to null, not {}.
+    # This is a performance optimization, but I'm dubious about if it does anything.
+    # Need a concrete perf test to be sure, but I think we can just simplified all this down to propFields: {}
+    # SBD (2018-Feb)
+    extend: (extendedValue, addPropFields) ->
+      mergeInto extendedValue ? {}, addPropFields
+
+  ### @propFields
+    Declare prop fields you intend to use.
+    IN: fields
+      map from field names to:
+        default-values
+
+    FUTURE-NOTE:
+      If we decide we want more options than just 'default-values',
+      we can add a new declarator: @propFieldsWithOptions
+      where the map-to-values must all be options objects.
+
+    EFFECTS:
+      used to define getters for @prop
+  ###
+  @propFields: propFields = (fields, b...) ->
+    if isString fields
+      @propFields "#{fields}": null
+
+    else if isArray fields
+      each f in-array fields
+        @propFields f
+
+    else if isPlainObject fields
+      @extendPropFields fields
+      each defaultValue, field in-object fields
+        @addGetter field, ~> @props[field]
+
+    else
+      throw new Error "invalid propFields type: #{formattedInspect fields}"
+
+    if b.length > 0
+      @propFields b
+
+  # ALIAS
+  @propField: propFields
 
 
   ################################################
@@ -733,7 +783,11 @@ class Component extends &PropFieldsMixin &StateFieldsMixin InstanceFunctionBindi
     2019: Better - let's make these lifecycle functions @extendableProperties
 
   _preprocessProps: (props, firstCall) ->
-    props = super props # triggers PropFieldsMixin - which will include any default values from @propFields
+    if propFields = @getPropFields()
+      merge propFields, props
+    else props
+
+    # props = super props # triggers PropFieldsMixin - which will include any default values from @propFields
     return props if defaultPreprocessProps == @preprocessProps
     try @preprocessProps props, firstCall
 

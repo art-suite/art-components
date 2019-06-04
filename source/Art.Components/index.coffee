@@ -9,7 +9,6 @@ module.exports
   ComponentEpoch:         require './ComponentEpoch'        
   DevMode:                require './DevMode'               
   Helpers:                require './Helpers'               
-  PropFieldsMixin:        require './PropFieldsMixin'       
   StandardImport:         require './StandardImport'        
   StateFieldsMixin:       require './StateFieldsMixin'      
   VirtualElement:         require './VirtualElement'        
