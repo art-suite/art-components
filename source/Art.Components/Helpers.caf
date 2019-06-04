@@ -1,4 +1,4 @@
-import &StandardImport, &ReactEpoch, {} &Component
+import &StandardImport, &ComponentEpoch, {} &Component
 
 getMergedTextPropValue = (oldValue, v) ->
   if oldValue?
@@ -15,11 +15,7 @@ getReactPerfCounters: ->
   VirtualElement: &VirtualElement.getCounters()
   Component:      &Component.getCounters()
 
-instantiateTopComponent: (componentInstance, bindToOrCreateNewParentElementProps) ->
-  console.warn "React.instantiateTopComponent is DEPRICATED. Use: componentInstance.instantiateAsTopComponent"
-  componentInstance.instantiateAsTopComponent bindToOrCreateNewParentElementProps
-
-onNextReady: (callback) -> reactEpoch.onNextReady callback
+onNextReady: (callback) -> componentEpoch.onNextReady callback
 
 objectTreeFactoryOptions:
 

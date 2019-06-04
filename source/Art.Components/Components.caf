@@ -1,4 +1,4 @@
-import &StandardImport, &ReactEpoch, {} &Component
+import &StandardImport, &ComponentEpoch, {} &Component
 
 getMergedTextPropValue = (oldValue, v) ->
   if oldValue?

@@ -6,10 +6,10 @@ module.exports
 .includeInNamespace require './Components'
 .addModules
   Component:              require './Component'             
+  ComponentEpoch:         require './ComponentEpoch'        
   DevMode:                require './DevMode'               
   Helpers:                require './Helpers'               
   PropFieldsMixin:        require './PropFieldsMixin'       
-  ReactEpoch:             require './ReactEpoch'            
   StandardImport:         require './StandardImport'        
   StateFieldsMixin:       require './StateFieldsMixin'      
   VirtualElement:         require './VirtualElement'        

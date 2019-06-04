@@ -101,7 +101,7 @@ class VirtualElement extends VirtualNode
 
   ## _newElement
     OUT: new concrete element instance
-  _newElement: (elementClassName, props, childElements, bindToOrCreateNewParentElementProps)->
+  _newElement: (elementClassName, props, childElements)->
     elementClassName
 
   _newErrorElement: -> null
@@ -269,10 +269,10 @@ class VirtualElement extends VirtualNode
     fully generate Virtual-AIM subbranch
     fully create all AIM elements
     OUT: this
-  _instantiate: (parentComponent, bindToOrCreateNewParentElementProps) ->
+  _instantiate: (parentComponent) ->
     if parentComponent != @renderedIn
       log "VirtualElement clone on instantiate: #{parentComponent?.inspectedNameAndId} #{@renderedIn?.inspectedNameAndId}"
-      # return @clone()._instantiate parentComponent, bindToOrCreateNewParentElementProps
+      # return @clone()._instantiate parentComponent
     super
     VirtualElement.instantiated++
     # globalCount "ReactVirtualElement_Instantiated"
@@ -301,6 +301,5 @@ class VirtualElement extends VirtualNode
       @elementClassName
       @props
       instantiatedChildren
-      bindToOrCreateNewParentElementProps
 
     @

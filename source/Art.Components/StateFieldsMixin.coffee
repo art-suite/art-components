@@ -2,7 +2,8 @@
 
 defineModule module, -> (superClass) -> class StateFieldsMixin extends superClass
 
-  @extendableProperty stateFields: {}
+
+  @extendableProperty stateFields: @emptyStateFields = {}
 
   ###
     Declare state fields you intend to use.

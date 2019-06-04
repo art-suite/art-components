@@ -1,61 +1,25 @@
-{
-  defineModule
-  w
-  log, merge, mergeInto, clone, shallowClone
-  inspect, keepIfRubyTrue, fastBind
-  slice
-  isObject
-  isString
-  isArray
-  isFunction
-  time
-  stackTime
-  countStep
-  arrayWithout
-  upperCamelCase
-  select
-  formattedInspect
-  getModuleBeingDefined
-  getEnv
-  mergeIntoUnless
-} = require 'art-standard-lib'
-{createWithPostCreate} = require 'art-class-system'
-{InstanceFunctionBindingMixin, globalCount} = require 'art-foundation'
-{createObjectTreeFactory} = require 'art-object-tree-factory'
-ReactEpoch = require './ReactEpoch'
+import &StandardImport, &ArtObjectTreeFactory, &Helpers
+{InstanceFunctionBindingMixin, globalCount} = &ArtFoundation
+{virtualElementPoolEnabled} = VirtualNode = &VirtualNode
 
-{virtualElementPoolEnabled} = VirtualNode = require './VirtualNode'
+&ComponentEpoch extract componentEpoch
+getEnv() extract artComponentsDebug
 
-{reactEpoch} = ReactEpoch
-
-React = require './namespace'
-{artReactDebug} = getEnv()
-
-devMode = require './DevMode'
-
-StateFieldsMixin = require './StateFieldsMixin'
-PropFieldsMixin = require './PropFieldsMixin'
+devMode = &DevMode
 
 if ArtEngineCore = Neptune.Art.Engine?.Core
-  # {stateEpoch} = ArtEngineCore.StateEpoch
   {globalEpochCycle} = ArtEngineCore.GlobalEpochCycle
-#   onNextStateEpochReady = (f) -> stateEpoch.onNextReady f
-#   timePerformance = (name, f) -> globalEpochCycle.timePerformance name, f
-# else
-#   onNextStateEpochReady = (f) -> reactEpoch.onNextReady f
-#   timePerformance = (name, f) -> f()
 
-# globalCount = ->
-# time = stackTime = (f) -> f()
+emptyProps = {}
 
 ###
-  React.js vs ReactArtEngine
+  React.js vs ArtComponents
   --------------------------
 
-  Generaly, ReactArtEngine is designed to work just like React.js. There is
+  Generaly, ArtComponents is designed to work just like React.js. There is
   some evolution, though, which I try to note below. -SBD
 
-  ReactArtEngine: "Instantiation"
+  ArtComponents: "Instantiation"
   -------------------------------
 
   This is not a concept in React.js. It isn't important to the client, but it
@@ -95,19 +59,13 @@ if ArtEngineCore = Neptune.Art.Engine?.Core
   Thoughts: I think this is OK, though this changes what "unmounted" means. I just
   fixed a bug where @state got altered without going through preprocessState first
   when state changes after the component was unmounted. How should I TEST this???
-
-###
-defineModule module, -> class Component extends PropFieldsMixin StateFieldsMixin InstanceFunctionBindingMixin VirtualNode
+class Component extends &PropFieldsMixin &StateFieldsMixin InstanceFunctionBindingMixin VirtualNode
   @abstractClass()
 
-  @nonBindingFunctions: w "getInitialState
-    componentWillReceiveProps
-    componentWillMount
-    componentWillUnmount
-    componentWillUpdate
-    componentDidMount
-    componentDidUpdate
-    render"
+  @nonBindingFunctions:
+    :componentWillMount
+    :componentWillUnmount
+    :render
 
   @resetCounters: ->
     @created =
@@ -120,50 +78,21 @@ defineModule module, -> class Component extends PropFieldsMixin StateFieldsMixin
 
   @topComponentInstances: []
   @rerenderAll: ->
-    for component in @topComponentInstances
+    each component in-array @topComponentInstances
       component.rerenderAll()
-    null
-
-  rerenderAll: ->
-    @_queueRerender()
-    @eachSubcomponent (component) -> component.rerenderAll()
-    null
-
-  @createAndInstantiateTopComponent: (spec) ->
-    Component.createComponentFactory(spec).instantiateAsTopComponent()
-
-  unknownModule = {}
-  @createComponentFactory: (spec, BaseClass = Component) ->
-    componentClass = if spec?.prototype instanceof Component
-      spec
-    else if spec?.constructor == Object
-      _module = getModule(spec) || unknownModule
-      _module.uniqueComponentNameId ||= 1
-
-      anonymousComponentName = "Anonymous#{BaseClass.getClassName()}"
-      anonymousComponentName += "_#{_module.uniqueComponentNameId++}"
-      anonymousComponentName += if _module.id then "_Module#{_module.id}" else '_ModuleUnknown'
-
-      class AnonymousComponent extends BaseClass
-        @_name: anonymousComponentName
-
-        for k, v of spec
-          @::[k] = v
-    else
-      throw new Error "Specification Object or class inheriting from Component required."
-
-    createWithPostCreate componentClass
 
   @toComponentFactory: ->
-    {objectTreeFactoryOptions} = React
-    {postProcessProps} = objectTreeFactoryOptions
+    objectTreeFactoryOptions extract postProcessProps
 
-    createObjectTreeFactory (merge objectTreeFactoryOptions,
-        inspectedName: @getName() + "ComponentFactory"
-        class: @
-        bind: "instantiateAsTopComponent"
-      ),
-      (props, children) =>
+    createObjectTreeFactory
+      merge
+        objectTreeFactoryOptions
+
+        inspectedName:  @getName() + "ComponentFactory"
+        class:          @
+        bind:           :instantiateAsTopComponent
+
+      (props, children) ->
         if children
           props = merge props, {children}
 
@@ -179,7 +108,7 @@ defineModule module, -> class Component extends PropFieldsMixin StateFieldsMixin
   #########################
   # HOT RELOAD SUPPORT
   #########################
-  @getModule: getModule = (spec = @::)->
+  @getModule: getModule = (spec = @prototype)->
     spec.module || spec.hotModule || getModuleBeingDefined()
 
   @getCanHotReload: -> @getModule()?.hot
@@ -191,7 +120,7 @@ defineModule module, -> class Component extends PropFieldsMixin StateFieldsMixin
         instanceToRerender: hotInstances.length
 
       # update all instances
-      for instance in hotInstances
+      each instance in-array hotInstances
         instance._componentDidHotReload()
 
   @postCreateConcreteClass: ({classModuleState, hotReloadEnabled})->
@@ -202,7 +131,6 @@ defineModule module, -> class Component extends PropFieldsMixin StateFieldsMixin
   #########################
   # INSTANCE
   #########################
-  emptyProps = {}
   constructor: (props = emptyProps) ->
     Component.created++
     globalCount "ReactComponent_Created"
@@ -227,17 +155,21 @@ defineModule module, -> class Component extends PropFieldsMixin StateFieldsMixin
     @_virtualElements = null
     @_refs = null
 
-  ###
-  SEE: VirtualElement#withElement for more
-  IN: f = (concreteElement) -> x
-  OUT: promise.then (x) ->
-  ###
+  ## withElement
+    SEE: VirtualElement#withElement for more
+    IN: f = (concreteElement) -> x
+    OUT: promise.then (x) ->
   withElement: (f) -> @_virtualElements.withElement f
 
-  #OUT: this
+  rerenderAll: ->
+    @_queueRerender()
+    @eachSubcomponent (component) -> component.rerenderAll()
+    null
+
+  # OUT: this
   instantiateAsTopComponent: (bindToOrCreateNewParentElementProps) ->
     Component.topComponentInstances.push @
-    @_instantiate null, bindToOrCreateNewParentElementProps
+    @_instantiate null # , bindToOrCreateNewParentElementProps
 
   unbindTopComponent: ->
     unless 0 <= index = Component.topComponentInstances.indexOf @
@@ -245,6 +177,10 @@ defineModule module, -> class Component extends PropFieldsMixin StateFieldsMixin
 
     Component.topComponentInstances = arrayWithout Component.topComponentInstances, index
     @_unmount()
+
+  ######################
+  # INSPECTION
+  ######################
 
   @getter
     inspectedName: -> "#{@className}#{if @key then "-"+@key  else ''}"
@@ -273,6 +209,44 @@ defineModule module, -> class Component extends PropFieldsMixin StateFieldsMixin
 
     null
 
+  ### find - find components in this branch of the VirtualTree that match pattern
+    IN
+      pattern: one of:
+        <String>
+        <RegExp>
+        (testString) -> t/f
+
+      options:
+        findAll: t/f  # by default find won't return children of matching Elements, set to true to return all matches
+        verbose: t/f  # log useful information on found objects
+
+      matches: internal use
+
+    OUT: <Array Components>
+  find: (pattern, options, matches = []) ->
+    options extract? findAll, verbose
+
+    if matchFound = @testMatchesPattern pattern
+      matches.push @
+
+    if verbose && (matchFound || verbose == :all)
+      log merge {} matchFound, @inspectedName, functionResult: if pattern is Function then pattern @
+
+    if !matchFound || findAll
+      @eachSubcomponent (child) -> child.find pattern, options, matches
+
+    matches
+
+  findElements: (pattern, options, matches = []) ->
+
+    if @_virtualElements
+      if options?.verbose
+        log "findElements in #{@inspectedName}"
+      @_virtualElements.findElements pattern, options, matches
+
+    matches
+
+
   ################################################
   # Component API (based loosly on Facebook.React)
   ################################################
@@ -298,40 +272,22 @@ defineModule module, -> class Component extends PropFieldsMixin StateFieldsMixin
       nextState object or passes nextState directly through.
       EFFECT: can call setState; CANNOT modify nextState
 
-    DEPRICATED: callback; use onNextReady
-  ###
-  setState: (a, b, c) ->
+  setState: (a, b) ->
     if isString a
-      if c
-        log.warn "DEPRICATED: setState callback. Use: onNextReady"
-        @onNextReady c
-      return @_setSingleState a, b
+      @_setSingleState a, b
 
-    if callback = b
-      log.warn "DEPRICATED: setState callback. Use: onNextReady"
-      @onNextReady callback
-
-    if newState = a
+    else if newState = a
       if isFunction newState
         @_queueUpdate newState
 
       else
         testState = @state
         _state = null
-        for k, v of newState when @_pendingState || testState[k] != v
+        each v, k in-object newState when @_pendingState || testState[k] != v
           _state ?= @_getStateToSet()
           _state[k] = v
 
-    @
-
-  ### replaceState
-    IN:   newState
-    OUT:  newState
-    DEPRICATED: callback; use onNextReady
-  ###
-  replaceState: (newState, callback) ->
-    log.warn "DEPRICATED: replaceState. use: setState -> {}"
-    @setState -> {}
+      @
 
   ################################################
   # Component LifeCycle
@@ -384,12 +340,12 @@ defineModule module, -> class Component extends PropFieldsMixin StateFieldsMixin
 
   ### preprocessState
     When:         preprocessState is called:
-                    immediatly after getInitialState
                     after preprocessProps
                     after componentWillUpdate
                     before rendering
 
-    IN:           newState - the state which is proposed to become @state
+    IN:           newState <Object> - the state which is proposed to become @state
+                  isInitialState <Boolean> - true if first call, else false
     OUT:          object which will become @state. Can be newState, be based on newState or completely new.
 
     Guarantees:   @state will allways be passed through preprocessState before it is set.
@@ -409,127 +365,26 @@ defineModule module, -> class Component extends PropFieldsMixin StateFieldsMixin
       I think:
         - it is OK to directly mutate newState, can we declare this offically part of the API?
         - calls to @setState in preprocessState will be applied NEXT epoch.
-        - could make getInitialState obsolete, but I think we'll keep it around for convenience and consistency
   ###
   preprocessState: defaultPreprocessState = (newState) -> newState
 
   ### componentWillMount
-    Invoked once immediately before the initial rendering occurs.
+    Invoked once, immediately before the initial rendering occurs.
     ALLOWED: setState
     IN/OUT: ignored
-  ###
   componentWillMount: defaultComponentWillMount = ->
 
   ### componentWillUnmount
-    Invoked immediately before a component is unmounted.
-    Perform any necessary cleanup things that were created in componentDidMount.
+    Invoked once, immediately before a component is unmounted.
     IN/OUT: ignored
-  ###
   componentWillUnmount: defaultComponentWillUnmount = ->
 
-  ###
+  ### componentDidHotReload
     Called each time webpack hot-reloads a module.
     It is important that this change the components state to trigger a rerender.
-  ###
   componentDidHotReload: ->
     count = (@state._hotModuleReloadCount || 0) + 1
     @setState _hotModuleReloadCount: count
-
-  ################################################
-  # DEPRICATED Component LifeCycle
-  ################################################
-  # DEPRICATED
-  # Called when the component is instantiated.
-  # ReactArtEngine ONLY: you CAN call setState/setSingleState during getInitialState:
-  #   * setState calls populate @_pendingState and are merged after getInitialState: @state = merge @getInitialState(), @_pendingState
-  #   * a reactEpoch cycle is not queued; the only significant expense is one extra object creation to store the @_pendingState
-  getInitialState: defaultGetInitialState = -> {}
-
-  ###
-    DEPRICATED
-    Invoked once immediately after the initial rendering occurs.
-  ###
-  componentDidMount: defaultComponentDidMount = ->
-
-  ###
-    DEPRICATED - preprocessProps makes this obsolete
-    Invoked when a component is receiving new props. This method is not called
-    for the initial render.
-
-    Use this as an opportunity to react to a prop transition before render()
-    is called by updating the state using this.setState(). The old props can
-    be accessed via this.props. Calling this.setState() within this function
-    will not trigger an additional render.
-  ###
-  componentWillReceiveProps: defaultComponentWillReceiveProps = (newProps) ->
-
-  # DEPRICATED - preprocessState makes this obsolete
-  # Invoked immediately before rendering when new props or state are being
-  # received. This method is not called for the initial render.
-  #
-  # Use this as an opportunity to perform preparation before an update occurs.
-  #
-  # Note: You cannot use @setState() in this method. If you need to update
-  # state in response to a prop change, use componentWillReceiveProps instead.
-  #
-  # ReactArtEngine-specific: if newProps == @props then props didn't change; same with newState
-  componentWillUpdate: defaultComponentWillUpdate = (newProps, newState)->
-
-  # DEPRICATED - use @render, check if not-first render; if you care
-  # Invoked immediately after updating occurs. This method is not called for the initial render.
-  # Use this as an opportunity to operate on the AIM when the component has been updated.
-  #
-  # ReactArtEngine-specific: if newProps == @props then props didn't change; same with newState
-  componentDidUpdate: defaultComponentDidUpdate = (oldProps, oldState)->
-
-  ######################
-  # ART REACT EXTENSIONS
-  ######################
-
-  ### find - find components in this branch of the VirtualTree that match pattern
-    IN
-      pattern: one of:
-        <String>
-        <RegExp>
-        (testString) -> t/f
-
-      options:
-        findAll: t/f  # by default find won't return children of matching Elements, set to true to return all matches
-        verbose: t/f  # log useful information on found objects
-
-      matches: internal use
-
-    OUT: <Array Components>
-  ###
-  find: (pattern, options, matches = []) ->
-    {findAll, verbose} = options if options?
-
-    if matchFound = @testMatchesPattern pattern
-      if verbose
-        log if usedFunction
-              matched: @inspectedName, functionResult: functionResult
-        else  matched: @inspectedName
-      matches.push @
-    else if verbose == "all"
-      log if usedFunction
-            notMatched: @inspectedName, functionResult: functionResult
-      else  notMatched: @inspectedName
-
-    if !matchFound || findAll
-      @eachSubcomponent (child) ->
-        child.find pattern, arguments[1], matches
-    matches
-
-  findElements: (pattern, options, matches = []) ->
-
-    if @_virtualElements
-      if options?.verbose
-        log "findElements in #{@inspectedName}"
-      @_virtualElements.findElements pattern, options, matches
-
-    matches
-
-  getPendingState: -> @_pendingState || @state
 
   ######################
   # PRIVATE
@@ -538,10 +393,11 @@ defineModule module, -> class Component extends PropFieldsMixin StateFieldsMixin
     if component == @renderedIn
       if key = @key
         component._refs[key] = @
-      if @props.children
-        for child in @props.children
-          child._captureRefs component
-    null
+
+      each child in-array @props.children
+        child._captureRefs component
+
+    @
 
   _getStateToSet: ->
     if @_wasMounted then @_getPendingState()
@@ -583,7 +439,7 @@ defineModule module, -> class Component extends PropFieldsMixin StateFieldsMixin
         be managed by the parent Component, when really it's 100% the child-component's concern.
 
       - What if a Component can request a "final render" just BEFORE it is unmounted? The parent Component's
-        render runs, removing the child Component. Then ArtReact detects the child needs unmounting, but just
+        render runs, removing the child Component. Then ArtComponents detects the child needs unmounting, but just
         before it unmounts it, the child gets a re-render as-if it's props changed, though they didn't. This
         in turn will update any Element or child Components for their animating-out state. After that,
         the component will get no more renders - since it will then be unmounted and unmounted components don't
@@ -623,7 +479,6 @@ defineModule module, -> class Component extends PropFieldsMixin StateFieldsMixin
         I also don't love tying this explicitly to ArtEngine's animating-out features.
 
     To ENABLE updates on unmounted Components, remove: || !@_mounted
-  ###
   _setPendingState: (pendingState) ->
     @_queueChangingComponentUpdates()
     @_pendingState = pendingState
@@ -631,7 +486,7 @@ defineModule module, -> class Component extends PropFieldsMixin StateFieldsMixin
   _queueChangingComponentUpdates: ->
     unless @_epochUpdateQueued
       @_epochUpdateQueued = true
-      reactEpoch.addChangingComponent @
+      componentEpoch.addChangingComponent @
 
   _queueUpdate: (updateFunction) ->
     @_queueChangingComponentUpdates()
@@ -657,50 +512,57 @@ defineModule module, -> class Component extends PropFieldsMixin StateFieldsMixin
       if hotInstances && 0 <= index = hotInstances.indexOf @
         moduleState.hotInstances = arrayWithout hotInstances, index
 
-  #OUT: this
+  ## _instantiate
+    OUT: this
   emptyState = {}
-  _instantiate: (parentComponent, bindToOrCreateNewParentElementProps) ->
+  _instantiate: (parentComponent) ->
     if parentComponent != @renderedIn && parentComponent? && @renderedIn?
       log "Component clone on instantiate: #{parentComponent?.inspectedNameAndId} #{@renderedIn?.inspectedNameAndId}"
-      # return @clone()._instantiate parentComponent, bindToOrCreateNewParentElementProps
+      # return @clone()._instantiate parentComponent
 
     super
     globalCount "ReactComponent_Instantiated"
     @bindFunctionsToInstance()
+    @_addHotInstance()
 
     @state ?= emptyState
 
-    @props = @_preprocessProps @props
-
-    @_addHotInstance()
+    @props = @_preprocessProps @props, true
     @_componentWillMount()
 
-    if defaultGetInitialState != @getInitialState
-      log.warn "DEPRICATED getInitialState: use @stateFields() or preprocessState()"
-      initialState = @getInitialState()
+    stateAfterPossibleSetState = @state
 
-    __state = @state
-    @state = emptyState
+    stateFields = @getStateFields()
+    @class extract emptyStateFields
+    haveStateFields       = stateFields != emptyStateFields
+    haveStateFromSetState = stateAfterPossibleSetState != emptyState
 
-    @state = @_preprocessState merge @getStateFields(), __state, initialState
+    @state = emptyState # @preprocessState is allowed to inspect @state
+    @state = @_preprocessState
+      switch
+        when haveStateFields && haveStateFromSetState
+          merge stateFields, stateAfterPossibleSetState
+        when haveStateFields        then stateFields
+        when haveStateFromSetState  then stateAfterPossibleSetState
+        else emptyState
 
-    @_instantiateVirtualElements bindToOrCreateNewParentElementProps
+      true
 
-    @_componentDidMount()
+    @_instantiateVirtualElements()
+
     @_wasMounted = @_mounted = true
     @
 
-  _instantiateVirtualElements: (bindToOrCreateNewParentElementProps) ->
+  _instantiateVirtualElements: ->
     if @_virtualElements = @_render()
-      @_virtualElements._instantiate @, bindToOrCreateNewParentElementProps
+      @_virtualElements._instantiate @
 
   _render: ->
     # <performance monitoring>
     Component.rendered++
     start = globalEpochCycle?.startTimePerformance()
     globalCount "ReactComponent_Rendered"
-    log "render component: #{@className}" if artReactDebug
-    # </performance monitoring>
+    log "render component: #{@className}" if artComponentsDebug
 
     @_refs = null
     VirtualNode.currentlyRendering = @
@@ -742,14 +604,15 @@ defineModule module, -> class Component extends PropFieldsMixin StateFieldsMixin
         # Further, this is wrapped up with the pending feature of optionally returing an array of Elements from the render function.
         # Last, this should not be special-cased if possible. VitualElement children handling code should be used to handle these updates.
 
-        console.error """
-          REACT-ART-ENGINE ERROR - The render function's top-level Component/VirtualElement changed 'too much.' The VirtualNode returned by a component's render function cannot change its Type or Key.
-
-          Solution: Wrap your changing VirtualNode with a non-changing VirtualElement.
-
-          Offending component: #{@classPathName}
-          Offending component assigned to: self.offendingComponent
+        console.error
           """
+            Art.Components ERROR - The render function's top-level Component/VirtualElement changed 'too much.' The VirtualNode returned by a component's render function cannot change its Type or Key.
+
+            Solution: Wrap your changing VirtualNode with a non-changing VirtualElement.
+
+            Offending component: #{@classPathName}
+            Offending component assigned to: self.offendingComponent
+
         console.log "CHANGED-TOO-MUCH-ERROR-DETAILS - all these properties must be the same on the oldRoot and newRoot",
           oldRoot: select @_virtualElements, "key", "elementClassName", "class"
           newRoot: select newRenderResult, "key", "elementClassName", "class"
@@ -757,9 +620,12 @@ defineModule module, -> class Component extends PropFieldsMixin StateFieldsMixin
         @_virtualElements?._unmount()
         (@_virtualElements = newRenderResult)._instantiate @
 
-  # 1. Modifies @ to be an exact clone of componentInstance.
-  # 2. Updates the true-Elements as we go.
-  # 3. returns @
+  ## _updateFrom
+    EFFECT:
+      1. Modifies @ to be an exact clone of componentInstance.
+      2. Updates the true-Elements as we go.
+
+    OUT: @
   _updateFrom: (componentInstance) ->
     if @_shouldReRenderComponent componentInstance
       globalCount "ReactComponent_UpdateFromTemporaryComponent_Changed"
@@ -769,7 +635,7 @@ defineModule module, -> class Component extends PropFieldsMixin StateFieldsMixin
 
     @
 
-  ### _resolvePendingUpdates
+  ## _resolvePendingUpdates
     Clears out @_pendingUpdates and @_pendingState, applying them all to 'state' as passed-in.
 
     NOTE:
@@ -788,7 +654,6 @@ defineModule module, -> class Component extends PropFieldsMixin StateFieldsMixin
       @_pendingState and @_pendingUpdates are null and have been applied to oldState
 
     OUT: state is returned as-is unless @_pendingState or @_pendingUpdates is set
-  ###
   _resolvePendingUpdates: (oldState = @state)->
     if @_pendingState
       newState = mergeIntoUnless @_pendingState, oldState
@@ -797,15 +662,14 @@ defineModule module, -> class Component extends PropFieldsMixin StateFieldsMixin
     if @_pendingUpdates
       newState ?= merge oldState
 
-      for updateFunction in @_pendingUpdates
+      each updateFunction in-array @_pendingUpdates
         newState = updateFunction.call @, newState
 
       @_pendingUpdates = null
 
     newState ? oldState
 
-
-  ### _applyPendingState
+  ## _applyPendingState
     NOTES:
       - newProps is non-null if this component is being updated from a non-instantiated Component.
       - This is where @props gets set for any update, but not where it gets set for component initializiation.
@@ -815,8 +679,6 @@ defineModule module, -> class Component extends PropFieldsMixin StateFieldsMixin
 
     NOTE: Any updates state-changes triggered in @componentDidUpdate will be delayed until next epoch
       @componentDidUpdate is DEPRICATED. use @render, check if not-first render; if you care
-
-  ###
   _applyPendingState: (newProps) ->
     return unless @_epochUpdateQueued || newProps
 
@@ -824,17 +686,16 @@ defineModule module, -> class Component extends PropFieldsMixin StateFieldsMixin
     oldState = @state
 
     if newProps
-      newProps = @_preprocessProps @_rawProps = newProps
+      newProps = @_preprocessProps
+        @_rawProps = newProps
+        false
 
-      @_componentWillReceiveProps newProps
     else
       newProps = oldProps
 
     @_updateComponent newProps, @_resolvePendingUpdates()
 
     @_reRenderComponent()
-
-    @_componentDidUpdate oldProps, oldState
 
 
   ### _updateComponent
@@ -849,29 +710,14 @@ defineModule module, -> class Component extends PropFieldsMixin StateFieldsMixin
       after @componetWillUpdate completes. The newState object passed to @componetWillUpdate is
       not modified.
 
-      IMPLEMENTATION NOTES:
-        @_resolvePendingUpdates is used here to immediately apply any changes @_componentWillUpdate caused.
-        However, if it didn't cause any changes, it's a noop.
-        Performance FYI: If @_componentWillUpdate triggers any changes, one new object will be created.
-
-        @_epochUpdateQueued is cleared AFTER @_componentWillUpdate so calls to @setState
-        IN @_componentWillUpdate won't actually trigger an epoch.
-
     NOTE: @preprocessState
       User-overridable @preprocessState is allowed to call @setState.
       Any updates state-changes triggered in @preprocessState will be delayed until next epoch
       @_preprocessState assumes @props has already been updated
-
-  ###
   _updateComponent: (newProps, newState) ->
-
-    @_componentWillUpdate newProps, newState
-
-    newState = @_resolvePendingUpdates newState
     @_epochUpdateQueued = false
     @props = newProps
-
-    @state = @_preprocessState newState
+    @state = @_preprocessState newState, false
 
   ########################
   # PRIVATE
@@ -885,57 +731,43 @@ defineModule module, -> class Component extends PropFieldsMixin StateFieldsMixin
       and execute each in sequence therefor they don't need to call super.
       We could also enable mixins this way.
     2019: Better - let's make these lifecycle functions @extendableProperties
-  ###
 
-  _preprocessProps: (props) ->
+  _preprocessProps: (props, firstCall) ->
     props = super props # triggers PropFieldsMixin - which will include any default values from @propFields
     return props if defaultPreprocessProps == @preprocessProps
-    try
-      @preprocessProps props
+    try @preprocessProps props, firstCall
+
     catch error
-      log ArtReact_preprocessProps: {Component: @, error}
-      console.log error
+      log ArtComponents_preprocessProps: {} error, Component: @
       props
 
-  _preprocessState: (state) ->
+  _preprocessState: (state, firstCall) ->
     return state if defaultPreprocessState == @preprocessState
-    try
-      @preprocessState state
+    try @preprocessState state, firstCall
     catch error
-      log ArtReact_preprocessState: {Component: @, error}
-      console.log error
+      log ArtComponents_preprocessState: {} error, Component: @
       state
 
   _componentDidHotReload: ->
     @bindFunctionsToInstance true
     try @componentDidHotReload()
+    catch error
+      log ArtComponents_componentWillUnmount: {} error, Component: @
+
+    null
 
   _componentWillMount: ->
     return if defaultComponentWillMount == @componentWillMount
-    @componentWillMount()
+    try @componentWillMount()
+    catch error
+      log ArtComponents_componentWillMount: {} error, Component: @
+
+    null
 
   _componentWillUnmount: ->
-    return if  defaultComponentWillUnmount == @componentWillUnmount
-    @componentWillUnmount()
+    return if defaultComponentWillUnmount == @componentWillUnmount
+    try @componentWillUnmount()
+    catch error
+      log ArtComponents_componentWillUnmount: {} error, Component: @
 
-  _componentDidMount: ->
-    return if defaultComponentDidMount == @componentDidMount
-    log.warn "DEPRICATED: _componentDidMount - use componentWillMount"
-    @onNextReady =>
-      @componentDidMount()
-
-  _componentWillReceiveProps: (newProps) ->
-    return if defaultComponentWillReceiveProps == @componentWillReceiveProps
-    log.warn "DEPRICATED: _componentWillReceiveProps - use preprocessProps"
-    @componentWillReceiveProps newProps
-
-  _componentWillUpdate: (newProps, newState)->
-    return if defaultComponentWillUpdate == @componentWillUpdate
-    log.warn "DEPRICATED: _componentWillUpdate - use preprocessProps / preprocessState"
-    @componentWillUpdate newProps, newState
-
-  _componentDidUpdate: (oldProps, oldState)->
-    return if defaultComponentDidUpdate == @componentDidUpdate
-    log.warn "DEPRICATED: _componentDidUpdate - use 'render' - it's called at exactly the same times - except for the first render"
-    @onNextReady =>
-      @componentDidUpdate oldProps, oldState
+    null

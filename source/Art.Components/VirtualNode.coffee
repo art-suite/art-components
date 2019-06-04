@@ -4,11 +4,11 @@
   defineModule
   isFunction
 } = require './StandardImport'
-{reactEpoch} = require './ReactEpoch'
+{componentEpoch} = require './ComponentEpoch'
 
 emptyObject = {}
 defineModule module, class VirtualNode extends BaseObject
-  onNextReady: (f, forceEpoch = true) -> reactEpoch.onNextReady f, forceEpoch, @
+  onNextReady: (f, forceEpoch = true) -> componentEpoch.onNextReady f, forceEpoch, @
 
   @virtualElementPoolEnabled = false
 
@@ -84,8 +84,8 @@ defineModule module, class VirtualNode extends BaseObject
 
   testMatchesPattern: (pattern, testString) ->
 
-    if usedFunction = isFunction pattern
-      !!(functionResult = pattern @)
+    if isFunction pattern
+      !!pattern @
     else
       (testString ? @inspectedName).match pattern
 
@@ -184,7 +184,7 @@ defineModule module, class VirtualNode extends BaseObject
   #   Virtual-AIM sub-branch is fully generated
   #   All True-AIM elements have been created and assembled
   # returns this
-  _instantiate: (parentComponent, bindToOrCreateNewParentElementProps) ->
+  _instantiate: (parentComponent) ->
     # unless !parentComponent? || parentComponent instanceof VirtualNode
     #   log.error {parentComponent, self: @}
     #   throw new Error "not right"
