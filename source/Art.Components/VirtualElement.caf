@@ -269,8 +269,8 @@ class VirtualElement extends VirtualNode
     fully create all AIM elements
     OUT: this
   _instantiate: (parentComponent) ->
-    if parentComponent != @renderedIn
-      log "VirtualElement clone on instantiate: #{parentComponent?.inspectedNameAndId} #{@renderedIn?.inspectedNameAndId}"
+    # if parentComponent != @renderedIn
+    #   log "VirtualElement clone on instantiate: #{parentComponent?.inspectedNameAndId} #{@renderedIn?.inspectedNameAndId}"
       # return @clone()._instantiate parentComponent
     super
     VirtualElement.instantiated++

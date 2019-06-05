@@ -69,7 +69,7 @@ class Component extends &StateFieldsMixin InstanceFunctionBindingMixin VirtualNo
   @_hotReloadUpdate: (@_moduleState) ->
     name = @getClassName()
     if hotInstances = @_moduleState.hotInstances
-      log "Art.React.Component #{@getName()} HotReload":
+      log.warn "Art.React.Component #{@getName()} HotReload":
         instanceToRerender: hotInstances.length
 
       # update all instances
@@ -505,9 +505,9 @@ class Component extends &StateFieldsMixin InstanceFunctionBindingMixin VirtualNo
     OUT: this
   emptyState = {}
   _instantiate: (parentComponent) ->
-    if parentComponent != @renderedIn && parentComponent? && @renderedIn?
-      log "Component clone on instantiate: #{parentComponent?.inspectedNameAndId} #{@renderedIn?.inspectedNameAndId}"
-      # return @clone()._instantiate parentComponent
+    # if parentComponent != @renderedIn && parentComponent? && @renderedIn?
+    #   log "Component clone on instantiate: #{parentComponent?.inspectedNameAndId} #{@renderedIn?.inspectedNameAndId}"
+    # return @clone()._instantiate parentComponent
 
     super
     globalCount "ReactComponent_Instantiated"
@@ -585,7 +585,7 @@ class Component extends &StateFieldsMixin InstanceFunctionBindingMixin VirtualNo
     else if newRenderResult = @_render()
 
       if @_virtualElements._canUpdateFrom newRenderResult
-        log "Component._reRenderComponent _updateFrom #{newRenderResult.inspectedName}/#{newRenderResult.uniqueId}"
+        # log "Component._reRenderComponent _updateFrom #{newRenderResult.inspectedName}/#{newRenderResult.uniqueId}"
         @_virtualElements._updateFrom newRenderResult
 
       else
@@ -729,23 +729,22 @@ class Component extends &StateFieldsMixin InstanceFunctionBindingMixin VirtualNo
     # props = super props # triggers PropFieldsMixin - which will include any default values from @propFields
     return props if defaultPreprocessProps == @preprocessProps
     try @preprocessProps props, firstCall
-
     catch error
-      log ArtComponents_preprocessProps: {} error, Component: @
+      @_logLifeCycleError error
       props
 
   _preprocessState: (state, firstCall) ->
     return state if defaultPreprocessState == @preprocessState
     try @preprocessState state, firstCall
     catch error
-      log ArtComponents_preprocessState: {} error, Component: @
+      @_logLifeCycleError error
       state
 
   _componentDidHotReload: ->
     @bindFunctionsToInstance true
     try @componentDidHotReload()
     catch error
-      log ArtComponents_componentWillUnmount: {} error, Component: @
+      @_logLifeCycleError error
 
     null
 
@@ -753,7 +752,7 @@ class Component extends &StateFieldsMixin InstanceFunctionBindingMixin VirtualNo
     return if defaultComponentWillMount == @componentWillMount
     try @componentWillMount()
     catch error
-      log ArtComponents_componentWillMount: {} error, Component: @
+      @_logLifeCycleError error
 
     null
 
@@ -761,6 +760,9 @@ class Component extends &StateFieldsMixin InstanceFunctionBindingMixin VirtualNo
     return if defaultComponentWillUnmount == @componentWillUnmount
     try @componentWillUnmount()
     catch error
-      log ArtComponents_componentWillUnmount: {} error, Component: @
+      @_logLifeCycleError error
 
     null
+
+  _logLifeCycleError: (error) ->
+    log.error ArtComponents_lifeCycle: {} error, Component: @
