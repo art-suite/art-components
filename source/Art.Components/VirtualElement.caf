@@ -38,9 +38,8 @@ class VirtualElement extends VirtualNode
       if !@_children
         throw new Error
           log.warn if @_released
-            "Critical Failure: VirtualElement<#{@inspectedName}-#{@uniqueId}> was released! Should not be accessing children!"
-          else
-            "Internal Failure: VirtualElement<#{@inspectedName}-#{@uniqueId}> has no children!"
+                "Critical Failure: VirtualElement<#{@inspectedName}-#{@uniqueId}> was released! Should not be accessing children!"
+          else  "Internal Failure: VirtualElement<#{@inspectedName}-#{@uniqueId}> has no children!"
 
       @_children
 

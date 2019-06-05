@@ -274,24 +274,10 @@ class Component extends &StateFieldsMixin InstanceFunctionBindingMixin VirtualNo
     EFFECTS:
       used to define getters for @prop
   ###
-  @propFields: propFields = (fields, b...) ->
-    if isString fields
-      @propFields "#{fields}": null
-
-    else if isArray fields
-      each f in-array fields
-        @propFields f
-
-    else if isPlainObject fields
-      @extendPropFields fields
-      each defaultValue, field in-object fields
-        @addGetter field, ~> @props[field]
-
-    else
-      throw new Error "invalid propFields type: #{formattedInspect fields}"
-
-    if b.length > 0
-      @propFields b
+  @propFields: propFields = @_normalizeAndValidateObjectDeclarations (fields) ->
+    @extendPropFields fields
+    each defaultValue, field in-object fields
+      @addGetter field, ~> @props[field]
 
   # ALIAS
   @propField: propFields
