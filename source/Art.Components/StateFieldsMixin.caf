@@ -1,0 +1,56 @@
+import &StandardImport
+
+(superClass) -> class StateFieldsMixin extends superClass
+
+  @extendableProperty stateFields: @emptyStateFields = {}
+
+  @_normalizeAndValidateObjectDeclarations: (f) ->
+    (args...) ->
+      each arg in compactFlattenFast args
+        switch
+        when arg is String then f.call @, [arg]: null
+        when arg is Object then f.call @, arg
+        else throw new Error "invalid argument"
+
+  ### @stateFields
+    Declare state fields you intend to use.
+    IN: fields
+      map from field names to initial values
+
+    EFFECTS:
+      used to initialize @state
+      declares @getters and @setters for each field
+      for fieldName, declares:
+        @getter :fieldName
+        @setter :fieldName
+
+        if initial value is true or false:
+          toggleFieldName:  -> @fieldName = !@fieldName
+          clearFieldName:   -> @fieldName = false
+          triggerFieldName: -> @fieldName = true
+
+        else
+          clearFieldName: -> @fieldName = null
+  @stateFields: stateFields = @_normalizeAndValidateObjectDeclarations (fields) ->
+    @extendStateFields fields
+    each initialValue, field in-object fields
+      defaultSetValue = initialValue
+      clearValue = null
+      upperCamelCaseFieldName = upperCamelCase field
+
+      @addGetter field, ~> @state[field]
+      @prototype[:clear + upperCamelCaseFieldName] = ~> @setState field, clearValue
+
+      if isBoolean initialValue
+        clearValue = false
+        defaultSetValue = true
+
+        @addSetter field, (v) ~> @setState field, !!v
+        @prototype[:trigger + upperCamelCaseFieldName] = ~> @setState field, true
+        @prototype[:toggle  + upperCamelCaseFieldName] = ~> @setState field, !@state[field]
+
+      else
+        @addSetter field, (v) ~> @setState field, v
+
+  # ALIAS
+  @stateField: stateFields
