@@ -33,32 +33,33 @@ suite: ->
       c.added = true
       c.onNextReady()
     .then ->
-      assert.eq [:child1 :child2 :child3], array child in c.refs.root.children with child.props.key
-      assert.eq [:child1 :child2 :child3], array child in c.refs.root.element.children with child.props.key
+      assert.isArray c.refs.root.element.children
+      assert.eq [:child1 :child2 :child3], array child in c.refs.root.children          with child.props.key
+      assert.eq [:child1 :child2 :child3], array child in c.refs.root.element.children  with child.props.key
 
-  test "_updateFrom add component", ->
-    class MyComponent1 extends Component
-      render: -> TestElement key: @props.key
+  # test "_updateFrom add component 2", ->
+  #   class MyComponent1 extends Component
+  #     render: -> TestElement key: @props.key
 
-    class MyWrapperComponent extends Component
-      @propFields :includeChild2
+  #   class MyWrapperComponent extends Component
+  #     @propFields :includeChild2
 
-      render: ->
-        TestElement
-          key: :root
-          TestElement   key: "child1"
-          MyComponent1  key: "child2" if @includeChild2
-          TestElement   key: "child3"
+  #     render: ->
+  #       TestElement
+  #         key: :root
+  #         TestElement   key: "child1"
+  #         MyComponent1  key: "child2" if @includeChild2
+  #         TestElement   key: "child3"
 
-    a = MyWrapperComponent includeChild2: false
-    ._instantiate()
+  #   a = MyWrapperComponent includeChild2: false
+  #   ._instantiate()
 
-    b = MyWrapperComponent includeChild2: true
-    a._updateFrom b
-    a.onNextReady()
-    .then ->
-      assert.eq [:child1 :child2 :child3], array child in a.refs.root.children with child.props.key
-      assert.eq [:child1 :child2 :child3], array child in a.refs.root.element.children with child.props.key
+  #   b = MyWrapperComponent includeChild2: true
+  #   a._updateFrom b
+  #   a.onNextReady()
+  #   .then ->
+  #     assert.eq [:child1 :child2 :child3], array child in a.refs.root.children          with child.props.key
+  #     assert.eq [:child1 :child2 :child3], array child in a.refs.root.element.children  with child.props.key
 
   test "_updateFrom remove component", ->
     class MyComponent1 extends Component

@@ -1,0 +1,123 @@
+import &StandardImport, &ComponentEpoch
+
+emptyObject = {}
+class VirtualNode extends BaseClass
+
+  @virtualElementPoolEnabled = false
+
+  @currentlyRendering: null
+
+  constructor: (props) ->
+    @_initVirtualNode props
+
+  _initVirtualNode: (props) ->
+    @_released        = false
+    @_parentComponent = null
+    @_renderedIn      = VirtualNode.currentlyRendering
+
+    @key = if props?
+      props.key
+    else
+      props = emptyObject
+      null
+
+    @props = @_rawProps = props
+    @_propsLength = -1
+
+
+  @getter
+    "rawProps reusable parentComponent renderedIn"
+    inspectedName:      -> "" VirtualNode<#{@key}>
+    inspectedNameAndId: -> "" #{@inspectedName}-#{@uniqueId}
+    inspectedPath: ->
+      if @parentComponent
+        @parentComponent.inspectedPath + "/"
+      else
+        ""
+      + @inspectedName
+
+    propsLength: ->
+      if @_propsLength >= 0
+        @_propsLength
+      else
+        @_propsLength = objectKeyCount @props
+
+  @setter
+    propsLength: (v)-> @_propsLength = v
+
+  onNextReady: (f, forceEpoch = true) ->
+    componentEpoch.onNextReady f, forceEpoch, @
+
+  eachInComponent: (f) -> f @
+
+  checkin: ->
+
+  release: ->
+    throw new Error "VirtualNode.release: already released #{@inspectedNameAndId}" if @_released
+
+    if @_parentComponent == @_renderedIn
+      @_resetAllProps()
+      @checkin()
+
+    @
+
+  testMatchesPattern: (pattern, testString) ->
+    if isFunction pattern
+      !!pattern @
+    else
+      (testString ? @inspectedName).match pattern
+
+  #####################
+  # PRIVATE
+  #####################
+
+  _resetVirtualNodeProps: ->
+    @_released = true
+    @_propsLength = -1
+    @_parentComponent =
+    @key = @props = @_rawProps = null
+
+  _resetAllProps: ->
+    @_resetVirtualNodeProps()
+
+  _validateChildren: (children) ->
+    return children unless children
+    each child in-array children
+      unless child instanceof VirtualNode
+        console.warn "invalid VirtualNode child": child, parent:@
+        console.warn "Hint: Did you place properties AFTER a child element?" if isObject child
+        throw new Error "VirtualNode child is not a VirtualNode.\ninvalid child: #{inspect child}\nparent: #{@inspectedName}"
+    children
+
+  # return true if an existing prop changed
+  # return true unless v == newProps[k] # propsEq - seems to be more overhead than its worth
+  _propsChanged: (virtualNode) ->
+    newProps = virtualNode.rawProps
+    _propsLength = 0
+
+    each v, k in-object @rawProps
+      _propsLength++
+      return true unless propsEq v, newProps[k]
+
+    @_propsLength = _propsLength
+
+    _propsLength != virtualNode.getPropsLength()
+
+  ## _updateFrom
+    Post conditions:
+      This and its entire Virtual-AIM sub-branch has been updated to be an exact clone of sourceNode,
+      except it is _instantiated and the True-AIM is fully updated as well.
+    returns this
+  _updateFrom: (sourceNode) ->
+
+  # return true if _updateFrom can work with sourceNode
+  _canUpdateFrom: (sourceNode) -> false
+
+  ## _instantiate
+    Post conditions:
+      Virtual-AIM sub-branch is fully generated
+      All True-AIM elements have been created and assembled
+    returns this
+  _instantiate: (parentComponent) ->
+    @_parentComponent = parentComponent
+    @

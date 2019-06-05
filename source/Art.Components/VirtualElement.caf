@@ -30,10 +30,17 @@ class VirtualElement extends VirtualNode
     @_initVirtualElement elementClassName, props, children
     @
 
+  emptyChildren = []
+  _initVirtualElement: (elementClassName, props, children) ->
+    @_elementClassName = elementClassName
+    @_children = children ? emptyChildren
+    @_validateChildren children if devMode
+    @_element = null
+
   #####################
   # Getters
   #####################
-  @getter "elementClassName released",
+  @getter "elementClassName released element",
     children: ->
       if !@_children
         throw new Error
@@ -79,15 +86,36 @@ class VirtualElement extends VirtualNode
   # Override these for custom ArtReact specializations (like ArtEngine)
   #####################################
   ### withElement
-    EFFECT: execute the function 'f' with the Concrete-Element associated with this VirtualElement.
-    IN: f = (concreteElement) -> x
-    OUT: promise.then (x) ->
+    Evaluate "f" in the thread the Element exists in.
 
-    OVERRIDE: OK
+    Example: For when React is running in a web-worker and the element
+    is on the main threa.
+
+    EFFECT: execute the function 'f' with the Concrete-Element associated with this VirtualElement.
+    IN: (element) -> plainObjects
+    OUT: promise returning function's plain-object-result
 
     PURPOSE: This is provided for the web-worker React so you can access the concrete element even though it is
       in another context. In that case, "f" will be serialized and any closure will be lost...
-  withElement: (f) -> new Promise (resolve) => resolve f @element
+
+    OVERRIDE this to support web-workers - when concrete elements are on not in this worker-instance
+  withElement: (f) ->
+    new Promise (resolve) -> resolve f @_element
+
+  ### sendToElement
+    Lighter-weight than "withElement"
+
+    IN:
+      method: string
+      args: 0 or more additional arguments
+    OUT: promise returning function's plain-object-result
+
+    Equivelent to:
+      @withElement (element) -> element[method] args...
+    OVERRIDE this to support web-workers - when concrete elements are on not in this worker-instance
+  sendToElement: (method, args...) ->
+    new Promise (resolve) -> resolve @_element[method] args...
+
 
   ## _updateElementProps
     EFFECT: @props has been updated and any props on the Concrete Element have been update
@@ -159,12 +187,6 @@ class VirtualElement extends VirtualNode
       child.release()
 
     @_elementClassName = @_children = null
-
-  emptyChildren = []
-  _initVirtualElement: (elementClassName, props, children) ->
-    @_elementClassName = elementClassName
-    @_children = children ? emptyChildren
-    @_validateChildren children if devMode
 
   #################
   # Update
@@ -238,7 +260,7 @@ class VirtualElement extends VirtualNode
 
   # returns this
   _updateFrom: (newNode) ->
-    return unless @element
+    return unless @_element
 
     if newNode._released  then log.error "updating from released VirtualElement: #{newNode.inspectedName}"
     if @released          then log.error "updating at released VirtualElement: #{@inspectedName}"
@@ -293,10 +315,10 @@ class VirtualElement extends VirtualNode
         @_newErrorElement()
         false
 
-      child.element
+      child._element
 
 
-    @element = @_newElement
+    @_element = @_newElement
       @elementClassName
       @props
       instantiatedChildren
