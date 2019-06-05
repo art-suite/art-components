@@ -3,14 +3,14 @@ import &StandardImport
 suite: ->
   test "_updateFrom basic", ->
     class MyComponent1 extends Component
-      render: -> TestElement key: @props.key
+      render: -> TestElement name: @props.name
 
-    a = MyComponent1 key: "foo"
+    a = MyComponent1 name: "foo"
     ._instantiate()
 
-    b = MyComponent1 key: "bar"
+    b = MyComponent1 name: "bar"
     a._updateFrom b
-    assert.eq a.props.key, "bar"
+    assert.eq a.props.name, "bar"
 
   test "_updateFrom add component", ->
     class MyComponent1 extends Component
