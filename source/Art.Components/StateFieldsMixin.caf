@@ -5,7 +5,7 @@ import &StandardImport
   @extendableProperty stateFields: @emptyStateFields = {}
 
   @_normalizeAndValidateObjectDeclarations: (f) ->
-    (args...) ->
+    (args...) ~>
       each arg in compactFlattenFast args
         switch
         when arg is String then f.call @, [arg]: null
