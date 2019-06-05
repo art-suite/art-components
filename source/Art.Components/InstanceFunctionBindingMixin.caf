@@ -1,0 +1,45 @@
+import &StandardImport
+
+(superClass) -> class InstanceFunctionBindingMixin extends superClass
+
+  ###################
+    CLASS
+  ###################
+  @getFunctionsToBindList: (hotReload) ->
+    if !hotReload && @hasOwnProperty :_functionsToBindList
+          @_functionsToBindList
+    else  @_functionsToBindList = @_getFunctionsToBindList().sort()
+
+  ###################
+    INSTANCE
+  ###################
+  constructor: ->
+    super
+    @_boundFunctionList = null
+
+  @classGetter :boundFunctionList
+
+  bindFunctionsToInstance: (hotReload) ->
+    @_removeUnboundFunctions  functionsToBindList = @class.getFunctionsToBindList hotReload
+    @_bindFunctions           functionsToBindList
+    @_boundFunctionList     = functionsToBindList
+
+  ###################
+    PRIVATE
+  ###################
+  @_getFunctionsToBindList: ->
+    array v, k in-object @prototype when k != :constructor &&
+        isFunction v
+        && @propertyIsConcrete(k) &&
+          !@nonBindingFunctions || !(k in @nonBindingFunctions)
+      k
+
+  _bindFunctions: (functionsToBindList) ->
+    @class extract prototype
+    each k in-array functionsToBindList
+      @[k] = if prototypeMethod = prototype[k]
+        fastBind prototypeMethod, @
+
+  _removeUnboundFunctions: (functionsToBindList) ->
+    each k in-array @_boundFunctionList when !(k in functionsToBindList)
+      delete @[k]

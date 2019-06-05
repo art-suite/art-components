@@ -1,5 +1,5 @@
 import &StandardImport, &ArtObjectTreeFactory, &Helpers
-{InstanceFunctionBindingMixin, globalCount} = &ArtFoundation
+{globalCount} = &ArtFoundation
 {virtualElementPoolEnabled} = VirtualNode = &VirtualNode
 
 &ComponentEpoch extract componentEpoch
@@ -12,7 +12,7 @@ if ArtEngineCore = Neptune.Art.Engine?.Core
 
 emptyProps = {}
 
-class Component extends &StateFieldsMixin InstanceFunctionBindingMixin VirtualNode
+class Component extends &StateFieldsMixin &InstanceFunctionBindingMixin VirtualNode
   @abstractClass()
 
   @nonBindingFunctions:
