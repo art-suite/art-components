@@ -111,12 +111,13 @@ suite:
             TestElement
               MySimpleComponent()
 
+    .thenTest "_instantiate and firstRender" (MyComponent)->
       myComponent = MyComponent()
       ._instantiate()
       .onNextReady().then -> myComponent
 
-    .tapTest
-      "firstRender"
+    ## .tapTest
+      "secondRender"
       (myComponent) ->
         assert.eq
           myComponent.find "MySimpleComponent"
@@ -125,14 +126,14 @@ suite:
         myComponent._virtualElements.setText :bar
         myComponent.onNextReady()
 
-      "secondRender"
+      "thirdRender"
       (myComponent) ->
         assert.eq
           myComponent.find "MySimpleComponent"
           .length
           1
 
-  virtualElementsPassedAsProps: ->
+  ## virtualElementsPassedAsProps: ->
     chainedTest ->
 
       class MyWrapper extends Component
