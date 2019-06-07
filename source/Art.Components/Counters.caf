@@ -1,0 +1,27 @@
+import &StandardImport
+
+class Counters extends BaseClass
+  counterNames =
+    :componentsCreated
+    :componentsRendered
+    :componentsUpdated
+    :componentsInstantiated
+
+  @classGetter
+    inspectedObjects: ->
+      object name in counterNames
+        @[name]
+
+  ## incrementers
+    Ex: componentCreated() -> logs event
+  object name in counterNames into @ with-key name.replace /^components/, 'component'
+    eval ""
+      (function() {
+        this.#{name}++;
+      })
+
+  @reset: ->
+    each name in counterNames
+      @[name] = 0
+
+  @reset()

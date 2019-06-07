@@ -1,0 +1,109 @@
+import &StandardImport
+
+suite: ->
+  testThree = (parent, child, parentStateString, childPropString, childStateString) ->
+    assert.eq
+      parent.state
+      parentProp: parentStateString
+      "" parent state.parentProp should be #{} parentStateString
+
+    assert.eq
+      child.props
+      parentProp: childPropString
+      "" child props.parentProp should be #{} childPropString
+
+    assert.eq
+      child.state
+      childProp: childStateString
+      "" child state.childProp should be #{} childStateString
+
+
+  chainedTest ->
+    class ChildComponent extends Component
+
+      @stateFields childProp: :childValue1
+
+      render: ->
+        TestElement
+          name: :childComponentsElement
+          @state
+          @props
+
+    class ParentComponent extends Component
+
+      @stateFields parentProp: :parentValue1
+
+      render: ->
+        ChildComponent @state
+
+    {} ParentComponent, ChildComponent
+
+  .thenTest "instantiate" ({ChildComponent, ParentComponent})->
+    child =
+      parent = ParentComponent()
+      ._instantiate()
+      .find(/childComponent/i)[0]
+    {} ChildComponent, ParentComponent, parent, child
+
+  .tapTest
+    "initial state" assertAllInitial = ({parent, child}) ->
+      testThree
+        parent
+        child
+        :parentValue1
+        :parentValue1
+        :childValue1
+
+    "update parent only" ({parent, child}) ->
+      parent.setParentProp :parentValue2
+
+      assertAllInitial {} parent, child
+      parent.onNextReady ->
+        testThree parent, child,
+          :parentValue2
+          :parentValue2
+          :childValue1
+
+    "update parent childOnly" ({parent, child}) ->
+      child.setChildProp :childValue2
+
+      testThree parent, child,
+        :parentValue2
+        :parentValue2
+        :childValue1
+
+      parent.onNextReady ->
+        testThree parent, child,
+          :parentValue2
+          :parentValue2
+          :childValue2
+
+    "update both, parent-first" ({parent, child}) ->
+      parent.setParentProp :parentValue3
+      child.setChildProp :childValue3
+      testThree parent, child,
+        :parentValue2
+        :parentValue2
+        :childValue2
+
+      parent.onNextReady ->
+        testThree parent, child,
+          :parentValue3
+          :parentValue3
+          :childValue3
+
+    "update both, child-first" ({parent, child}) ->
+      Counters.reset()
+      child.setChildProp :childValue4
+      parent.setParentProp :parentValue4
+      testThree parent, child,
+        :parentValue3
+        :parentValue3
+        :childValue3
+
+      parent.onNextReady ->
+        testThree parent, child,
+          :parentValue4
+          :parentValue4
+          :childValue4
+        assert.eq 2, Counters.componentsUpdated, "" should only take 2 updates to updated 2 components, even if their updates were triggered out-of-order

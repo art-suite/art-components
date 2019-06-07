@@ -4,6 +4,7 @@
 module.exports = require './namespace'
 module.exports
 .addModules
+  Counters:               require './Counters'              
   PerfRegressions:        require './PerfRegressions'       
   StandardImport:         require './StandardImport'        
   Test:                   require './Test'                  

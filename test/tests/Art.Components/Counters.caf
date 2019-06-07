@@ -1,0 +1,14 @@
+import &StandardImport
+
+suite: ->
+  test :reset ->
+    Counters.reset()
+    assert.eq 0 Counters.componentsInstantiated
+
+
+  test :componentInstantiated ->
+    Counters.reset()
+    Counters.componentInstantiated()
+    assert.eq 1 Counters.componentsInstantiated
+    Counters.reset()
+    assert.eq 0 Counters.componentsInstantiated

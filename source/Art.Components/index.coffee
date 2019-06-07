@@ -7,6 +7,7 @@ module.exports
 .addModules
   Component:                    require './Component'                   
   ComponentEpoch:               require './ComponentEpoch'              
+  Counters:                     require './Counters'                    
   DevMode:                      require './DevMode'                     
   Helpers:                      require './Helpers'                     
   InstanceFunctionBindingMixin: require './InstanceFunctionBindingMixin'

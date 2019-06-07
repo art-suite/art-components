@@ -8,11 +8,14 @@ class ComponentEpoch extends Epoch
   addChangingComponent: (component)->
     @queueItem component
 
+  testByComponentDepth = (a, b) ->
+    a._componentDepth - b._componentDepth
+
   processEpochItems: (changingComponents)->
     globalCount
       "" ComponentEpoch processEpochItems
       stackTime ->
-        each component in-array changingComponents
+        each component in-array changingComponents.sort testByComponentDepth
           component._applyPendingState()
 
 # bind to GlobalEpochCycle if loaded

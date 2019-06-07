@@ -1,5 +1,4 @@
-import &StandardImport, &ArtObjectTreeFactory, &Helpers
-{globalCount} = &ArtFoundation
+import &StandardImport, &ArtObjectTreeFactory, &Helpers, {} &Counters
 {virtualElementPoolEnabled} = VirtualNode = &VirtualNode
 
 &ComponentEpoch extract componentEpoch
@@ -20,14 +19,8 @@ class Component extends &StateFieldsMixin &InstanceFunctionBindingMixin VirtualN
     :componentWillUnmount
     :render
 
-  @resetCounters: ->
-    @created =
-    @rendered =
-    @instantiated = 0
-
-  @resetCounters()
-
-  @getCounters: -> {@created, @rendered, @instantiated}
+  @resetCounters: -> Counters.reset()
+  @getCounters: -> Counters.inspectedObjects
 
   @topComponentInstances: []
   @rerenderAll: ->
@@ -35,28 +28,11 @@ class Component extends &StateFieldsMixin &InstanceFunctionBindingMixin VirtualN
       component.rerenderAll()
 
   @toComponentFactory: ->
-    objectTreeFactoryOptions extract postProcessProps
+    &Helpers extract objectTreeFactoryOptions
 
     createObjectTreeFactory
-      merge
-        objectTreeFactoryOptions
-
-        inspectedName:  @getName() + "ComponentFactory"
-        class:          @
-        bind:           :instantiateAsTopComponent
-
-      (props, children) ->
-        if children
-          props = merge props, {children}
-
-        instance = new @ postProcessProps props
-
-        instance._validateChildren props?.children if devMode
-
-        instance
-
-  @instantiateAsTopComponent = (props, options) ->
-    new @(props).instantiateAsTopComponent options
+      objectTreeFactoryOptions
+      @
 
   #########################
   # HOT RELOAD SUPPORT
@@ -84,10 +60,22 @@ class Component extends &StateFieldsMixin &InstanceFunctionBindingMixin VirtualN
   #########################
   # INSTANCE
   #########################
-  constructor: (props = emptyProps) ->
-    Component.created++
-    globalCount "ReactComponent_Created"
+  constructor: (props, children) ->
+    Counters.componentCreated()
+
+    props = if children
+      propsChildren = {} children
+      if props?
+        merge props, propsChildren
+      else propsChildren
+    else props ? emptyProps
+
     super props
+
+    @_componentDepth =
+      @_renderedIn?._componentDepth ? 0
+      + 1
+
     @state =
 
     @_refs =
@@ -509,7 +497,9 @@ class Component extends &StateFieldsMixin &InstanceFunctionBindingMixin VirtualN
       return @clone()._instantiate parentComponent
 
     super
-    globalCount "ReactComponent_Instantiated"
+
+    Counters.componentInstantiated()
+
     @bindFunctionsToInstance()
     @_addHotInstance()
 
@@ -549,9 +539,9 @@ class Component extends &StateFieldsMixin &InstanceFunctionBindingMixin VirtualN
 
   _render: ->
     # <performance monitoring>
-    Component.rendered++
     start = globalEpochCycle?.startTimePerformance()
-    globalCount "ReactComponent_Rendered"
+    Counters.componentRendered()
+
     log "render component: #{@className}" if artComponentsDebug
 
     @_refs = null
@@ -620,14 +610,11 @@ class Component extends &StateFieldsMixin &InstanceFunctionBindingMixin VirtualN
     OUT: @
   _updateFrom: (componentInstance) ->
     if @_shouldReRenderComponent componentInstance
-      globalCount "ReactComponent_UpdateFromTemporaryComponent_Changed"
       @_applyPendingState componentInstance.props
-    else
-      globalCount "ReactComponent_UpdateFromTemporaryComponent_NoChange"
 
     @
 
-  ## _resolvePendingUpdates
+  ## _resolvePendingStateUpdates
     Clears out @_pendingUpdates and @_pendingState, applying them all to 'state' as passed-in.
 
     NOTE:
@@ -638,17 +625,16 @@ class Component extends &StateFieldsMixin &InstanceFunctionBindingMixin VirtualN
       if @_pendingState is set, it is an object we are allowed to mutate
         It will be mutated and be the return-value of this function.
 
-    IN:
-      oldState - the state to update
-
     EFFECTS:
       oldState is NOT modified
       @_pendingState and @_pendingUpdates are null and have been applied to oldState
 
     OUT: state is returned as-is unless @_pendingState or @_pendingUpdates is set
-  _resolvePendingUpdates: (oldState = @state)->
-    if @_pendingState
-      newState = mergeIntoUnless @_pendingState, oldState
+  _resolvePendingStateUpdates: ->
+    oldState = @state
+
+    if newState = @_pendingState
+      object v, k from-object oldState into newState when newState[k] == undefined
       @_pendingState = null
 
     if @_pendingUpdates
@@ -674,18 +660,21 @@ class Component extends &StateFieldsMixin &InstanceFunctionBindingMixin VirtualN
   _applyPendingState: (newProps) ->
     return unless @_epochUpdateQueued || newProps
 
+    Counters.componentUpdated()
+
+    @_epochUpdateQueued = false
+
     oldProps = @props
     oldState = @state
 
     if newProps
-      newProps = @_preprocessProps
+      @props = @_preprocessProps
         @_rawProps = newProps
         false
 
-    else
-      newProps = oldProps
-
-    @_updateComponent newProps, @_resolvePendingUpdates()
+    @state = @_preprocessState
+      @_resolvePendingStateUpdates()
+      false
 
     @_reRenderComponent()
 
@@ -706,10 +695,6 @@ class Component extends &StateFieldsMixin &InstanceFunctionBindingMixin VirtualN
       User-overridable @preprocessState is allowed to call @setState.
       Any updates state-changes triggered in @preprocessState will be delayed until next epoch
       @_preprocessState assumes @props has already been updated
-  _updateComponent: (newProps, newState) ->
-    @_epochUpdateQueued = false
-    @props = newProps
-    @state = @_preprocessState newState, false
 
   ########################
   # PRIVATE

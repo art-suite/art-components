@@ -16,6 +16,19 @@ class VirtualElement extends VirtualNode
 
   @getCounters: -> {@created, @instantiated}
 
+  @createVirtualElementFactories: (elementClassNames) ->
+    &ArtObjectTreeFactory.createObjectTreeFactories
+      merge
+        &Helpers.objectTreeFactoryOptions
+        class: @
+      elementClassNames
+      (elementClassName) ->
+        (props, children) ->
+          @_newVirtualElement
+            elementClassName
+            props
+            children
+
   #####################
   # CONSTRUCTION
   #####################

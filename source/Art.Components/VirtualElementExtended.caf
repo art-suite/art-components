@@ -1,7 +1,5 @@
 import &StandardImport, &ArtObjectTreeFactory
 
-&Helpers.objectTreeFactoryOptions extract postProcessProps
-
 class VirtualElementExtended extends &VirtualElement
   @abstractClass()
 
@@ -9,17 +7,6 @@ class VirtualElementExtended extends &VirtualElement
     @virtualElementPool = new &VirtualElementPool @
 
     super
-
-  @createVirtualElementFactories: (elementClassNames) ->
-    createObjectTreeFactories
-      class: @
-      elementClassNames
-      (elementClassName) ->
-        (props, children) ->
-          @_newVirtualElement
-            elementClassName
-            postProcessProps props
-            children
 
   ###############
     TODO
