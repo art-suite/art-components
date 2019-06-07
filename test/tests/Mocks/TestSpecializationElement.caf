@@ -4,8 +4,9 @@ class TestSpecializationElement extends BaseClass
   constructor: (@elementType, @props, @children, @creatingVirtualElement) ->
 
   @getter
-    inspectedObjects: ->
-      [@elementType]: merge
-        props: @props
-        children: @children
+    inspectedObjects: -> [@elementType]: merge {} @props, @children
 
+  @property :children
+
+  setProperty:    (k, v) -> @props[k] = v
+  resetProperty:  (k)    -> delete @props[k]

@@ -6,14 +6,5 @@ import &StandardImport
 
 class TestSpecializationVirtualElement extends VirtualElementExtended
 
-  _setProperty:   (k, v)  -> @element.props[k] = v
-  _resetProperty: (k)     -> delete @element.props[k]
-
-  _setElementChildren: (childElements) ->
-    throw new Error "no element! #{@inspectedName}" unless @element
-    @element.children = childElements
-
   _newElement: (elementType, props, children)->
     new &TestSpecializationElement elementType, props, children, @
-
-  _newErrorElement: -> new &TestSpecializationElement :errorElement null null @
