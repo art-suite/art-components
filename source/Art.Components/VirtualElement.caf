@@ -59,13 +59,12 @@ class VirtualElement extends VirtualNode
       {key, elementClassName} = @
       "Virtual-#{elementClassName}#{if key then "-" + key  else ''}"
 
-    inspectedObjects: ->
-      "#{@inspectedName}": @inspectedObjectsContents
-
     inspectedObjectsContents: ->
       if @children.length > 0
         compactFlattenAllFast {@props}, toInspectedObjects @children
-      else {@props}
+      else {} @props
+
+    inspectedObjects: -> "#{@inspectedName}": @inspectedObjectsContents
 
   findElements: (pattern, options, matches = []) ->
     if foundMatch = @testMatchesPattern pattern
@@ -83,10 +82,67 @@ class VirtualElement extends VirtualNode
     null
 
   #####################################
-  # Specialization Overrides
-  # Override these for custom ArtReact specializations (like ArtEngine)
+    Specialization Overrides
+    (only used internally)
   #####################################
-  ### withElement
+    Override these for custom ArtReact specializations (like ArtEngine)
+
+    If your concrete-elements implement the following API you won't
+    have much to do to create your own VirtaulElements:
+
+      Element API:
+        setProperty:    (key, value) ->
+        resetProperty:  (key) ->
+          # restore property to it's default
+
+        setChildren:    (concreteChildrenArray) ->
+          # set or Update (via complete replacement) element's children
+
+    Then all you need to do is override:
+
+      _newElement
+
+    Optionally, you can override the following:
+
+      _updateElementProps
+      _setElementChildren
+      withElement
+      sendToElement
+
+  ## _newElement
+    OVERRIDE: required
+    OUT: new concrete element instance
+  _newElement: (elementClassName, props, childElements)->
+    elementClassName
+
+  _newErrorElement: -> @_newElement :ErrorElement
+
+  ## _updateElementProps
+    OVERRIDE: optional
+    EFFECT: @props has been updated and any props on the Concrete Element have been update
+    OUT: true if props changed
+  elementTemp     = null
+  addedOrChanged  = (k, v) -> elementTemp.setProperty k, v  unless k == :children
+  removed         = (k, v) -> elementTemp.resetProperty k   unless k == :children
+  _updateElementProps: (newProps) ->
+    elementTemp = @element
+    try
+      out = @_updateElementPropsHelper newProps, addedOrChanged, removed
+    elementTemp = null
+    out
+
+  ## _setElementChildren
+    OVERRIDE: optional
+    IN: childrenElement: array of concrete elements to be all the children for this element
+  _setElementChildren: (childElements) ->
+    @element.setChildren childElements
+
+  #####################################
+    Specialization Overrides
+    (used Externally)
+  #####################################
+
+  ## withElement
     Evaluate "f" in the thread the Element exists in.
 
     Example: For when React is running in a web-worker and the element
@@ -100,10 +156,11 @@ class VirtualElement extends VirtualNode
       in another context. In that case, "f" will be serialized and any closure will be lost...
 
     OVERRIDE this to support web-workers - when concrete elements are on not in this worker-instance
+    OVERRIDE: optional
   withElement: (f) ->
     new Promise (resolve) -> resolve f @_element
 
-  ### sendToElement
+  ## sendToElement
     Lighter-weight than "withElement"
 
     IN:
@@ -114,31 +171,16 @@ class VirtualElement extends VirtualNode
     Equivelent to:
       @withElement (element) -> element[method] args...
     OVERRIDE this to support web-workers - when concrete elements are on not in this worker-instance
+    OVERRIDE: optional
   sendToElement: (method, args...) ->
     new Promise (resolve) -> resolve @_element[method] args...
 
-
-  ## _updateElementProps
-    EFFECT: @props has been updated and any props on the Concrete Element have been update
+  ####################################
+    Specialization Helpers
+  ####################################
+  ## _updateElementPropsHelper
+    EFFECT: @props has been set to the newProps if they changed
     OUT: true if props changed
-  _updateElementProps: (newProps) ->
-
-  ## _setElementChildren
-    IN: childrenElement: array of concrete elements to be all the children for this element
-  _setElementChildren: (childElements) ->
-
-  ## _newElement
-    OUT: new concrete element instance
-  _newElement: (elementClassName, props, childElements)->
-    elementClassName
-
-  _newErrorElement: -> throw new Error "VirtualElement _newErrorElement not overridden"
-
-  ##################
-  # Specialization Helpers
-  ##################
-  # EFFECT: @props has been set to the newProps if they changed
-  # OUT: true if props changed
   _updateElementPropsHelper: (newProps, addedOrChanged, removed) ->
     oldPropsLength = @getPropsLength()
     oldProps = @props
@@ -157,12 +199,12 @@ class VirtualElement extends VirtualNode
 
   ########################
   ########################
-  # PRIVATE
+    PRIVATE
   ########################
   ########################
 
   ##########################################
-  # VirtualNode Overrides
+    VirtualNode Overrides
   ##########################################
   clone: ->
     new VirtualElement
@@ -191,8 +233,49 @@ class VirtualElement extends VirtualNode
 
     @_elementClassName = @_children = null
 
+  #####################
+  # Instantiate
+  #####################
+
+  ## _instantiate
+    create element or componentInstance
+    fully generate Virtual-AIM subbranch
+    fully create all AIM elements
+    OUT: this
+  _instantiate: (parentComponent) ->
+    if parentComponent != @_renderedIn && parentComponent && @_renderedIn
+      return @clone()._instantiate parentComponent
+
+    super
+    VirtualElement.instantiated++
+
+    @_element = try
+      instantiatedChildren = array child, childIndex in-array @children when
+        child = @children[childIndex] = child._instantiate parentComponent
+
+        child.element
+        ? throw new Error "child(#{child.uniqueId}) #{childIndex}/#{@children.length} #{child.inspectedName} not instantiated"
+
+      @_element = @_newElement
+        @elementClassName
+        @props
+        instantiatedChildren
+
+    catch error
+      errors = true
+      log.error VirtualElement._instantiate: {}
+          error
+          @elementClassName
+          @props
+
+      @_newErrorElement()
+
+    throw new Error "VirtualElement._instantiate: no @_element" unless @_element?
+
+    @
+
   #################
-  # UpdateFrom
+    UpdateFrom
   #################
   ## _canUpdateFrom
     IN: <VirtualElement>
@@ -209,7 +292,7 @@ class VirtualElement extends VirtualNode
         @children[i] = null
         oldChild
 
-  ### _fastUpdateChildren
+  ## _fastUpdateChildren
     OUT: <Boolean>
       TRUE if no Nodes were added, removed or changed "types"
       This implies @element.children didn't change.
@@ -279,11 +362,6 @@ class VirtualElement extends VirtualNode
     propsChanged    = @_updateElementProps fromVirtualElement.props
     childrenChanged = @_updateChildren fromVirtualElement
 
-    # each child, i in @_children
-    #   if !child.element
-    #     throw new Error "child #{i} #{child.inspectedName} not instantiated"
-    #   log "#{@inspectedName} _updateFrom: child #{i} #{child.inspectedName} instantiated"
-
     ### VirtualElementPool:
       don't recurse on children -
       @_updateChildren will checkin the children that need checked in
@@ -291,51 +369,5 @@ class VirtualElement extends VirtualNode
     if virtualElementPoolEnabled
       fromVirtualElement._children = null
       fromVirtualElement.release()
-
-    # globalCount "ReactVirtualElement_UpdateFromTemporaryVirtualElement_#{if propsChanged || childrenChanged then 'Changed' else 'NoChange'}"
-
-    @
-
-  #####################
-  # Instantiate
-  #####################
-
-  ### _instantiate
-    create element or componentInstance
-    fully generate Virtual-AIM subbranch
-    fully create all AIM elements
-    OUT: this
-  _instantiate: (parentComponent) ->
-    if parentComponent != @_renderedIn && parentComponent && @_renderedIn
-      return @clone()._instantiate parentComponent
-
-    super
-    # log "VirtualElement._instantiate #{@inspectedName}"
-    VirtualElement.instantiated++
-    # globalCount "ReactVirtualElement_Instantiated"
-
-    @_element = try
-      instantiatedChildren = array child, childIndex in-array @children when
-        child = @children[childIndex] = child._instantiate parentComponent
-
-        child.element
-        ? throw new Error "child(#{child.uniqueId}) #{childIndex}/#{@children.length} #{child.inspectedName} not instantiated"
-
-      # log {} instantiatedChildren
-      @_element = @_newElement
-        @elementClassName
-        @props
-        instantiatedChildren
-
-    catch error
-      errors = true
-      log.error VirtualElement._instantiate: {}
-          error
-          @elementClassName
-          @props
-
-      @_newErrorElement()
-
-    throw new Error "VirtualElement._instantiate: no @_element" unless @_element?
 
     @
