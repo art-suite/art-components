@@ -5,20 +5,38 @@ suite: ->
     class Wrapper extends Component
       render: ->
         TestElement
-          key: "wrapper"
-          @props.children
+          name: "wrapper"
+          # log "propsChildren", @props.children
+          TestElement name: "red"
+          TestElement name: "blue"
 
     class MyComponent extends Component
       render: ->
         Wrapper
-          TestElement key: "red"
-          TestElement key: "blue"
+          TestElement name: "red"
+          TestElement name: "blue"
 
-    c = MyComponent()
+    MyComponent()
     ._instantiate()
-    .onNextReady ->
-      assert.eq c.element.props.key, :wrapper
+    .onNextReady ({element}) ->
+      assert.eq element.props.name, :wrapper
+
       assert.eq
         :red :blue
-        array child in c.element.children
-          child.key
+        array child in element.children
+          child.props.name
+
+  test "baseline", ->
+
+    class MyComponent extends Component
+      render: ->
+        TestElement
+          TestElement name: "red"
+          TestElement name: "blue"
+
+    MyComponent()
+    ._instantiate()
+    .onNextReady ({element}) ->
+      assert.eq
+        2
+        element.children.length

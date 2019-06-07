@@ -24,7 +24,6 @@ class VirtualNode extends BaseClass
     @props = @_rawProps = props
     @_propsLength = -1
 
-
   @getter
     "rawProps reusable parentComponent renderedIn"
     inspectedName:      -> "" VirtualNode<#{@key}>
@@ -66,6 +65,13 @@ class VirtualNode extends BaseClass
       !!pattern @
     else
       (testString ? @inspectedName).match pattern
+
+  #####################
+  # INSPECTIOn
+  #####################
+  findFirstElement: (pattern, options) ->
+    found = @findElements pattern, options
+    found?[0]
 
   #####################
   # PRIVATE

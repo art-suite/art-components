@@ -34,7 +34,7 @@ suite:
 
         assert.eq
           myComponent.findElements(:innerMost)[0].renderedIn
-          myComponent
+          myComponent.find(:MyWrapper)[0]
 
         tt = myComponent.findElements(:innerMost)[0]
         # log {} tt.renderedIn, tt.inspectedName
@@ -116,7 +116,7 @@ suite:
       ._instantiate()
       .onNextReady().then -> myComponent
 
-    ## .tapTest
+    .tapTest
       "secondRender"
       (myComponent) ->
         assert.eq
@@ -133,7 +133,7 @@ suite:
           .length
           1
 
-  ## virtualElementsPassedAsProps: ->
+  virtualElementsPassedAsProps: ->
     chainedTest ->
 
       class MyWrapper extends Component
@@ -154,13 +154,15 @@ suite:
             first:  TestElement key: :firstElementKey
             last:   TestElement key: :secondElementKey
 
+    .thenTest "_instantiate and firstRender" (MyComponent)->
       myComponent = MyComponent()
       ._instantiate()
       .onNextReady().then -> myComponent
 
     .tapTest
-      "firstRender"
+      "secondRender"
       (myComponent) ->
+        log "secondRender..."
         assert.eq
           myComponent.findElements "firstElementKey"
           .length
@@ -168,9 +170,9 @@ suite:
         myComponent._virtualElements.setNumElements 2
         myComponent.onNextReady()
 
-      "secondRender"
-      (myComponent) ->
-        assert.eq
-          myComponent.findElements "firstElementKey"
-          .length
-          1
+    #   "thirdRender"
+    #   (myComponent) ->
+    #     assert.eq
+    #       myComponent.findElements "firstElementKey"
+    #       .length
+    #       1

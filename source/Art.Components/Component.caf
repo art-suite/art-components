@@ -138,7 +138,7 @@ class Component extends &StateFieldsMixin &InstanceFunctionBindingMixin VirtualN
   @getter
     inspectedName: -> "#{@className}#{if @key then "-"+@key  else ''}"
     inspectedObjects: ->
-      "Component-#{@inspectedName} #{@_virtualElements?.inspectedName ? '(not instantiated)'}":
+      [@inspectedName]:
         @_virtualElements?.inspectedObjectsContents ? {@props}
 
     mounted: -> @_mounted
@@ -505,9 +505,8 @@ class Component extends &StateFieldsMixin &InstanceFunctionBindingMixin VirtualN
     OUT: this
   emptyState = {}
   _instantiate: (parentComponent) ->
-    # if parentComponent != @renderedIn && parentComponent? && @renderedIn?
-    #   log "Component clone on instantiate: #{parentComponent?.inspectedNameAndId} #{@renderedIn?.inspectedNameAndId}"
-    # return @clone()._instantiate parentComponent
+    if parentComponent != @_renderedIn && parentComponent? && @_renderedIn?
+      return @clone()._instantiate parentComponent
 
     super
     globalCount "ReactComponent_Instantiated"
@@ -544,7 +543,9 @@ class Component extends &StateFieldsMixin &InstanceFunctionBindingMixin VirtualN
 
   _instantiateVirtualElements: ->
     if @_virtualElements = @_render()
+      VirtualNode.currentlyRendering = @
       @_virtualElements._instantiate @
+      VirtualNode.currentlyRendering = null
 
   _render: ->
     # <performance monitoring>
@@ -586,7 +587,9 @@ class Component extends &StateFieldsMixin &InstanceFunctionBindingMixin VirtualN
 
       if @_virtualElements._canUpdateFrom newRenderResult
         # log "Component._reRenderComponent _updateFrom #{newRenderResult.inspectedName}/#{newRenderResult.uniqueId}"
+        VirtualNode.currentlyRendering = @
         @_virtualElements._updateFrom newRenderResult
+        VirtualNode.currentlyRendering = null
 
       else
         # TODO - this should probably NOT be an error, but it isn't easy to solve.

@@ -61,11 +61,12 @@ suite: ->
 
     class MyComponent extends Component
       render: ->
-        Wrapper {},
+        Wrapper
+          key: :wrapperComponentRenderedInMyComponent
           rr = TestElement key: :redRectangle   draw: :red
           br = TestElement key: :blueRectangle  draw: :blue
 
-    myComponent = MyComponent()
+    myComponent = MyComponent key: :myComponentRenderedManually
     ._instantiate()
     wrapper = myComponent._virtualElements
 
@@ -80,17 +81,20 @@ suite: ->
       "" wrapper is the renderedIn for it's top-most TestElement
 
     assert.eq
-      myComponent
-      wrapper.findElements(:redRectangle)[0].renderedIn
-      "" myComponent is the renderedIn for TestElement-redRectangle
+      wrapper
+      wrapper.findFirstElement :redRectangle
+      .renderedIn
+      ""
+        instantiate: wrapper is the renderedIn for TestElement-redRectangle -
+        because it is rendered first in myComponent and then cloned in wrapper
 
     assert.eq
       Object.keys(myComponent._virtualElements.refs).sort()
-      [] :wrapper
+      :blueRectangle :redRectangle :wrapper
 
     assert.eq
       Object.keys(myComponent.refs).sort()
-      :blueRectangle :redRectangle
+      :blueRectangle :redRectangle :wrapperComponentRenderedInMyComponent
 
     assert.eq true, myComponent.refs.redRectangle == rr
     assert.eq true, myComponent.refs.blueRectangle == br

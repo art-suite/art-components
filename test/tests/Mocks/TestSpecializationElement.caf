@@ -1,4 +1,11 @@
 import &StandardImport
 
-class TestSpecializationElement
+class TestSpecializationElement extends BaseClass
   constructor: (@elementType, @props, @children, @creatingVirtualElement) ->
+
+  @getter
+    inspectedObjects: ->
+      [@elementType]: merge
+        props: @props
+        children: @children
+

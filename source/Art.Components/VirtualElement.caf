@@ -22,6 +22,7 @@ class VirtualElement extends VirtualNode
   constructor: (elementClassName, props, children) ->
     VirtualElement.created++
     super props
+    # throw new Error "blah" unless @_renderedIn
     @_initVirtualElement elementClassName, props, children
 
   init: (elementClassName, props, children) ->
@@ -131,7 +132,7 @@ class VirtualElement extends VirtualNode
   _newElement: (elementClassName, props, childElements)->
     elementClassName
 
-  _newErrorElement: -> null
+  _newErrorElement: -> throw new Error "VirtualElement _newErrorElement not overridden"
 
   ##################
   # Specialization Helpers
@@ -164,7 +165,9 @@ class VirtualElement extends VirtualNode
   # VirtualNode Overrides
   ##########################################
   clone: ->
-    new VirtualElement @elementClassName, @props,
+    new VirtualElement
+      @elementClassName
+      @props
       array child in @children
         child.clone()
 
@@ -189,29 +192,34 @@ class VirtualElement extends VirtualNode
     @_elementClassName = @_children = null
 
   #################
-  # Update
+  # UpdateFrom
   #################
+  ## _canUpdateFrom
+    IN: <VirtualElement>
+    OUT: <Boolean>
+      True if this VE is capable of updating itself to identically match
+      the passed-in virtualElement
+  _canUpdateFrom: (virtualElement)->
+    @elementClassName == virtualElement.elementClassName &&
+    @key == virtualElement.key
+
   _extractOldChildToUpdate: (child)->
     find oldChild, i in @children
       if oldChild?._canUpdateFrom child
         @children[i] = null
         oldChild
 
-  _canUpdateFrom: (b)->
-    @elementClassName == b.elementClassName &&
-    @key == b.key
-
   ### _fastUpdateChildren
-    OUT:
+    OUT: <Boolean>
+      TRUE if no Nodes were added, removed or changed "types"
+      This implies @element.children didn't change.
+
+    EFFECT:
       if no Nodes were added, removed or changed "types"
-        EFFECT: _updateFrom newChild for all oldChildren
-        true
-      else
-        EFFECT: NONE
-        # use _slowUpdateChildren instead
-        false
-  _fastUpdateChildren: (fromNode) ->
-    newChildren = fromNode.children
+        run _updateFrom newChild for all oldChildren
+      else noop; return false
+  _fastUpdateChildren: (fromVirtualElement) ->
+    newChildren = fromVirtualElement.children
     oldChildren = @children
     return false unless oldChildren.length == newChildren.length
 
@@ -220,38 +228,41 @@ class VirtualElement extends VirtualNode
 
     each oldChild, i in-array oldChildren
       oldChild._updateFrom newChildren[i]
+
     true
 
-  _slowUpdateChildren: (fromNode) ->
+  ## _slowUpdateChildren
+    IN: fromVirtualElement <VirtualElement>
+  _slowUpdateChildren: (fromVirtualElement) ->
 
     oldChildren = @children
 
-    newChildren = array newChild from-array fromNode.children
+    newChildren = array newChild from-array fromVirtualElement.children
       if oldChild = @_extractOldChildToUpdate newChild
-        oldChild._updateFrom newChild
-      else
-        newChild._instantiate @_parentComponent
+            oldChild._updateFrom newChild
+      else  newChild._instantiate @_parentComponent
 
     each child in oldChildren when child
       child._unmount()
       child.release() if virtualElementPoolEnabled
 
-    fromNode._children = null if virtualElementPoolEnabled
+    fromVirtualElement._children = null if virtualElementPoolEnabled
 
-    @_setElementChildren array child in-array newChildren with child.element
+    @_setElementChildren array child in-array newChildren
+      child.element
+
     @_children = newChildren
 
-  ### _updateChildren
-    OUT: true if children changed
+  ## _updateChildren
+    OUT: <Boolean> true if children changed
       if true, element.setChildren was called
       if false, the children individually may change, but
         this element's children are the same set
-  ###
-  _updateChildren: (newNode) ->
-    if @_fastUpdateChildren newNode
+  _updateChildren: (fromVirtualElement) ->
+    if @_fastUpdateChildren fromVirtualElement
       false
     else
-      @_slowUpdateChildren newNode
+      @_slowUpdateChildren fromVirtualElement
       true
 
   _unmount: ->
@@ -259,23 +270,27 @@ class VirtualElement extends VirtualNode
       child._unmount()
 
   # returns this
-  _updateFrom: (newNode) ->
-    return unless @_element
+  _updateFrom: (fromVirtualElement) ->
+    unless @_element                  then throw new Error "VirtualElement._updateFrom: #{@inspectedName} no @_element"
+    if fromVirtualElement._released   then log.error "updating from released VirtualElement: #{fromVirtualElement.inspectedName}"
+    if @released                      then log.error "updating at released VirtualElement: #{@inspectedName}"
+    if fromVirtualElement == @        then throw new Error "_updateFrom self!!!"
 
-    if newNode._released  then log.error "updating from released VirtualElement: #{newNode.inspectedName}"
-    if @released          then log.error "updating at released VirtualElement: #{@inspectedName}"
+    propsChanged    = @_updateElementProps fromVirtualElement.props
+    childrenChanged = @_updateChildren fromVirtualElement
 
-    if newNode == @ then throw new Error "_updateFrom self!!!"
-    propsChanged    = @_updateElementProps newNode.props
-    childrenChanged = @_updateChildren newNode
+    # each child, i in @_children
+    #   if !child.element
+    #     throw new Error "child #{i} #{child.inspectedName} not instantiated"
+    #   log "#{@inspectedName} _updateFrom: child #{i} #{child.inspectedName} instantiated"
 
     ### VirtualElementPool:
       don't recurse on children -
       @_updateChildren will checkin the children that need checked in
       and NOT checkin the ones which will still be used
     if virtualElementPoolEnabled
-      newNode._children = null
-      newNode.release()
+      fromVirtualElement._children = null
+      fromVirtualElement.release()
 
     # globalCount "ReactVirtualElement_UpdateFromTemporaryVirtualElement_#{if propsChanged || childrenChanged then 'Changed' else 'NoChange'}"
 
@@ -291,36 +306,36 @@ class VirtualElement extends VirtualNode
     fully create all AIM elements
     OUT: this
   _instantiate: (parentComponent) ->
-    # if parentComponent != @renderedIn
-    #   log "VirtualElement clone on instantiate: #{parentComponent?.inspectedNameAndId} #{@renderedIn?.inspectedNameAndId}"
-      # return @clone()._instantiate parentComponent
+    if parentComponent != @_renderedIn && parentComponent && @_renderedIn
+      return @clone()._instantiate parentComponent
+
     super
+    # log "VirtualElement._instantiate #{@inspectedName}"
     VirtualElement.instantiated++
     # globalCount "ReactVirtualElement_Instantiated"
 
-    array child, childIndex in-array @children into instantiatedChildren = [] when
-      try
-        child._instantiate parentComponent
-        true
+    @_element = try
+      instantiatedChildren = array child, childIndex in-array @children when
+        child = @children[childIndex] = child._instantiate parentComponent
 
-      catch error
-        errors = true
-        log.error "Error instantiating child": {}
-            childIndex
-            error
-            child
-            @elementClassName
-            @props
+        child.element
+        ? throw new Error "child(#{child.uniqueId}) #{childIndex}/#{@children.length} #{child.inspectedName} not instantiated"
 
-        @_newErrorElement()
-        false
+      # log {} instantiatedChildren
+      @_element = @_newElement
+        @elementClassName
+        @props
+        instantiatedChildren
 
-      child._element
+    catch error
+      errors = true
+      log.error VirtualElement._instantiate: {}
+          error
+          @elementClassName
+          @props
 
+      @_newErrorElement()
 
-    @_element = @_newElement
-      @elementClassName
-      @props
-      instantiatedChildren
+    throw new Error "VirtualElement._instantiate: no @_element" unless @_element?
 
     @
