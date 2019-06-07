@@ -736,21 +736,17 @@ class Component extends &StateFieldsMixin &InstanceFunctionBindingMixin VirtualN
 
     null
 
-  _componentWillMount: ->
-    return if defaultComponentWillMount == @componentWillMount
-    try @componentWillMount()
-    catch error
-      @_logLifeCycleError error
+  _componentWillMount:    -> @_doCustomLifeCycle defaultComponentWillMount,   @componentWillMount,   null
+  _componentWillUnmount:  -> @_doCustomLifeCycle defaultComponentWillUnmount, @componentWillUnmount, null
 
-    null
-
-  _componentWillUnmount: ->
-    return if defaultComponentWillUnmount == @componentWillUnmount
-    try @componentWillUnmount()
-    catch error
-      @_logLifeCycleError error
-
-    null
+  _doCustomLifeCycle: (defaultLifeCycle, customLifeCycle, defaultReturnValue) ->
+    if defaultLifeCycle != customLifeCycle
+      try
+        customLifeCycle.call @
+      catch error
+        @_logLifeCycleError error
+        defaultReturnValue
+    else defaultReturnValue
 
   _logLifeCycleError: (error) ->
     log.error ArtComponents_lifeCycle: {} error, Component: @
