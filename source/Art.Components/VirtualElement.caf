@@ -29,13 +29,15 @@ class VirtualElement extends VirtualNode
             props
             children
 
+  @_newVirtualElement: (elementClassName, props, children) ->
+    new @ elementClassName, props, children
+
   #####################
   # CONSTRUCTION
   #####################
   constructor: (elementClassName, props, children) ->
     VirtualElement.created++
     super props
-    # throw new Error "blah" unless @_renderedIn
     @_initVirtualElement elementClassName, props, children
 
   init: (elementClassName, props, children) ->
@@ -246,6 +248,10 @@ class VirtualElement extends VirtualNode
 
     @_elementClassName = @_children = null
 
+  _unmount: ->
+    each child in @children
+      child._unmount()
+
   #####################
   # Instantiate
   #####################
@@ -361,10 +367,6 @@ class VirtualElement extends VirtualNode
       @_slowUpdateChildren fromVirtualElement
       true
 
-  _unmount: ->
-    each child in @children
-      child._unmount()
-
   # returns this
   _updateFrom: (fromVirtualElement) ->
     unless @_element                  then throw new Error "VirtualElement._updateFrom: #{@inspectedName} no @_element"
@@ -374,13 +376,4 @@ class VirtualElement extends VirtualNode
 
     propsChanged    = @_updateElementProps fromVirtualElement.props
     childrenChanged = @_updateChildren fromVirtualElement
-
-    ### VirtualElementPool:
-      don't recurse on children -
-      @_updateChildren will checkin the children that need checked in
-      and NOT checkin the ones which will still be used
-    if virtualElementPoolEnabled
-      fromVirtualElement._children = null
-      fromVirtualElement.release()
-
     @

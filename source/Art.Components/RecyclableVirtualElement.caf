@@ -1,0 +1,30 @@
+import &StandardImport, &ArtObjectTreeFactory
+
+class RecyclableVirtualElement extends &VirtualElement
+  @abstractClass()
+
+  @postCreateConcreteClass: ->
+    @virtualElementPool = new &VirtualElementPool @
+
+    super
+
+  @_newVirtualElement: (elementClassName, props, children) ->
+    @virtualElementPool.checkout elementClassName, props, children
+
+  ####################
+    Instance
+  ####################
+  checkin: ->
+    @class.virtualElementPool.checkin @
+
+  _updateFrom: (fromVirtualElement) ->
+    super
+
+    ### VirtualElementPool:
+      don't recurse on children -
+      @_updateChildren will checkin the children that need checked in
+      and NOT checkin the ones which will still be used
+    fromVirtualElement._children = null
+    fromVirtualElement.release()
+
+    @

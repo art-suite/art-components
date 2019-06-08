@@ -4,7 +4,7 @@ import &StandardImport
   This specialization is intened mostly as an example of how
   to write a specialization.
 
-class TestSpecializationVirtualElement extends VirtualElementExtended
+class TestSpecializationVirtualElement extends VirtualElement
 
   _newElement: (elementType, props, children)->
     new &TestSpecializationElement elementType, props, children, @
