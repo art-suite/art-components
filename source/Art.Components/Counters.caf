@@ -2,26 +2,32 @@ import &StandardImport
 
 class Counters extends BaseClass
   counterNames =
-    :componentsCreated
-    :componentsRendered
-    :componentsUpdated
-    :componentsInstantiated
+    component:      commonNames = :created :rendered :updated :instantiated :released
+    virtualElement: commonNames
+
+  methodNames = []
+  propNames = []
+
+  each counters, category in counterNames
+    each counter in counters
+      propNames.push    lowerCamelCase "" #{category}s #{counter}
+      methodNames.push  lowerCamelCase "" #{category}  #{counter}
 
   @classGetter
     inspectedObjects: ->
-      object name in counterNames
+      object name in propNames
         @[name]
 
   ## incrementers
     Ex: componentCreated() -> logs event
-  object name in counterNames into @ with-key name.replace /^components/, 'component'
+  object name, i in propNames into @ with-key methodNames[i]
     eval ""
       (function() {
         this.#{name}++;
       })
 
   @reset: ->
-    each name in counterNames
+    each name in propNames
       @[name] = 0
 
   @reset()

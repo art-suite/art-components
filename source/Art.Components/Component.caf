@@ -19,9 +19,6 @@ class Component extends &StateFieldsMixin &InstanceFunctionBindingMixin VirtualN
     :componentWillUnmount
     :render
 
-  @resetCounters: -> Counters.reset()
-  @getCounters: -> Counters.inspectedObjects
-
   @topComponentInstances: []
   @rerenderAll: ->
     each component in-array @topComponentInstances

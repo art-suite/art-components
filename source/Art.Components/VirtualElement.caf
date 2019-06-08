@@ -1,20 +1,10 @@
-import &StandardImport
+import &StandardImport, {} &Counters
 {virtualElementPoolEnabled} = VirtualNode = &VirtualNode
 
 devMode = &DevMode
 
 class VirtualElement extends VirtualNode
   @abstractClass()
-
-  @resetCounters: ->
-    @created      = 0
-    @instantiated = 0
-    @reused       = 0
-    @released     = 0
-
-  @resetCounters()
-
-  @getCounters: -> {@created, @instantiated}
 
   @createVirtualElementFactories: (elementClassNames) ->
     &ArtObjectTreeFactory.createObjectTreeFactories
@@ -36,12 +26,12 @@ class VirtualElement extends VirtualNode
   # CONSTRUCTION
   #####################
   constructor: (elementClassName, props, children) ->
-    VirtualElement.created++
+    Counters.virtualElementCreated()
     super props
     @_initVirtualElement elementClassName, props, children
 
   init: (elementClassName, props, children) ->
-    VirtualElement.reused++
+    Counters.virtualElementReused()
     @_initVirtualNode props
     @_initVirtualElement elementClassName, props, children
     @
@@ -240,7 +230,7 @@ class VirtualElement extends VirtualNode
     null
 
   _resetAllProps: ->
-    VirtualElement.released++
+    Counters.virtualElementReleased()
     @_resetVirtualNodeProps()
 
     each child in-array @_children
@@ -266,7 +256,7 @@ class VirtualElement extends VirtualNode
       return @clone()._instantiate parentComponent
 
     super
-    VirtualElement.instantiated++
+    Counters.virtualElementInstantiated()
 
     @_element = try
       instantiatedChildren = array child, childIndex in-array @children when
