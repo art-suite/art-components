@@ -8,6 +8,7 @@
   "name": "art-components",
   "scripts": {
     "build": "webpack --progress",
+    "perf": "nn -s;mocha -u tdd perf/",
     "start": "webpack-dev-server --hot --inline --progress",
     "test": "nn -s;mocha -u tdd",
     "testInBrowser": "webpack-dev-server --progress"
