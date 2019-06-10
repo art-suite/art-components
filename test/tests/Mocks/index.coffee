@@ -5,5 +5,6 @@ module.exports = require './namespace'
 module.exports
 .includeInNamespace require './Mocks'
 .addModules
-  TestSpecializationElement:        require './TestSpecializationElement'       
-  TestSpecializationVirtualElement: require './TestSpecializationVirtualElement'
+  TestSpecializationElement:                  require './TestSpecializationElement'                 
+  TestSpecializationRecyclableVirtualElement: require './TestSpecializationRecyclableVirtualElement'
+  TestSpecializationVirtualElement:           require './TestSpecializationVirtualElement'          

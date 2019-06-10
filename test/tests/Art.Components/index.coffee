@@ -4,9 +4,10 @@
 module.exports = require './namespace'
 module.exports
 .addModules
-  Counters:               require './Counters'              
-  PerfRegressions:        require './PerfRegressions'       
-  StandardImport:         require './StandardImport'        
-  Test:                   require './Test'                  
-  VirtualElementExtended: require './VirtualElementExtended'
+  Counters:                 require './Counters'                
+  PerfRegressions:          require './PerfRegressions'         
+  RecyclableVirtualElement: require './RecyclableVirtualElement'
+  StandardImport:           require './StandardImport'          
+  Test:                     require './Test'                    
+  VirtualElement:           require './VirtualElement'          
 require './Component'

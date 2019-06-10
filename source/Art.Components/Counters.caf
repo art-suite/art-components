@@ -2,7 +2,7 @@ import &StandardImport
 
 class Counters extends BaseClass
   counterNames =
-    component:      commonNames = :created :rendered :updated :instantiated :released
+    component:      commonNames = :created :rendered :updated :instantiated :released :reused
     virtualElement: commonNames
 
   methodNames = []
@@ -15,7 +15,7 @@ class Counters extends BaseClass
 
   @classGetter
     inspectedObjects: ->
-      object name in propNames
+      object name in propNames when @[name] > 0
         @[name]
 
   ## incrementers

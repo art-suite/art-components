@@ -1,0 +1,10 @@
+import &StandardImport
+
+## EXAMPLE specialization
+  This specialization is intened mostly as an example of how
+  to write a specialization.
+
+class TestSpecializationRecyclableVirtualElement extends RecyclableVirtualElement
+
+  _newElement: (elementType, props, children)->
+    new &TestSpecializationElement elementType, props, children, @

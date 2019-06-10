@@ -2,23 +2,41 @@ import &StandardImport
 
 renderRecursiveStructure = (depth = 2) ->
   if depth == 0
-    TestElement()
+    TestElementR()
   else
-    TestElement
+    TestElementR
       renderRecursiveStructure depth - 1
       renderRecursiveStructure depth - 1
 
 suite:
-  tests: ->
-    test "simulated render" ->
-      TestElement()
-      .release()
+  tests:
+    base: ->
+      test "simulated render renderRecursiveStructure 7-element" ->
+        renderRecursiveStructure()
+        Counters.reset()
+        renderRecursiveStructure()
+        assert.eq
+          virtualElementsCreated:   7
+          Counters.inspectedObjects
 
-    test "simulated render renderRecursiveStructure 7-element" ->
-      renderRecursiveStructure()
-      .release()
-      renderRecursiveStructure()
-      .release()
+    released: ->
+      test "simulated render" ->
+        TestElementR()
+        .release()
+
+      test "simulated render renderRecursiveStructure 7-element" ->
+        renderRecursiveStructure().release()
+        Counters.reset()
+        renderRecursiveStructure().release()
+        assert.eq
+          virtualElementsReleased:  7
+          virtualElementsReused:    7
+          Counters.inspectedObjects
+
+      test "simulated render renderRecursiveStructure 15-element" ->
+        Counters.reset()
+        renderRecursiveStructure()
+        .release()
 
   baseline: ->
     a = 1
@@ -35,7 +53,7 @@ suite:
       benchmark
         "simulated render 1 element"
         ->
-          TestElement()
+          TestElementR()
         warmUpDuration: 2
 
       benchmark
@@ -49,14 +67,14 @@ suite:
         ->
           renderRecursiveStructure 3
         # duration: 2
-        warmUpDuration: 4
+        warmUpDuration: 2
 
     withRelease: ->
       @timeout 10000
       benchmark
         "simulated render 1 element"
         ->
-          TestElement()
+          TestElementR()
           .release()
         warmUpDuration: 2
 
@@ -74,7 +92,7 @@ suite:
           renderRecursiveStructure 3
           .release()
         # duration: 2
-        warmUpDuration: 4
+        warmUpDuration: 2
 
 
     # withoutRelease2: ->
@@ -82,7 +100,7 @@ suite:
     #   # benchmark
     #   #   "simulated render 1 element"
     #   #   ->
-    #   #     TestElement()
+    #   #     TestElementR()
     #   #   warmUpDuration: 2
 
     #   benchmark
@@ -97,7 +115,7 @@ suite:
     #   # benchmark
     #   #   "simulated render 1 element"
     #   #   ->
-    #   #     TestElement()
+    #   #     TestElementR()
     #   #     .release()
     #   #   warmUpDuration: 2
 

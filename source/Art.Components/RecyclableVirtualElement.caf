@@ -28,3 +28,10 @@ class RecyclableVirtualElement extends &VirtualElement
     fromVirtualElement.release()
 
     @
+
+  _unmount: ->
+    super
+
+    # super will _unmount - and release - children
+    @_children = null
+    @release()

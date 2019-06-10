@@ -1,3 +1,7 @@
 import &StandardImport
-&TestSpecializationVirtualElement
-.createVirtualElementFactories [] :TestElement, :TestOtherElement, :TestTextElement
+merge
+  &TestSpecializationVirtualElement
+  .createVirtualElementFactories [] :TestElement, :TestOtherElement, :TestTextElement
+
+  &TestSpecializationRecyclableVirtualElement
+  .createVirtualElementFactories [] :TestElementR, :TestOtherElementR, :TestTextElementR

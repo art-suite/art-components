@@ -1,4 +1,4 @@
 &ArtStandardLib.mergeWithSelf &ArtClassSystem,
-  &source/Art/React
+  &ArtComponents
   &test/tests/Mocks
   test: (args...) -> global.test args...

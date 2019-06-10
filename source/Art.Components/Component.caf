@@ -1,5 +1,4 @@
-import &StandardImport, &ArtObjectTreeFactory, &Helpers, {} &Counters
-{virtualElementPoolEnabled} = VirtualNode = &VirtualNode
+import &StandardImport, &ArtObjectTreeFactory, &Helpers, {} &Counters, &VirtualNode
 
 &ComponentEpoch extract componentEpoch
 getEnv() extract artComponentsDebug
@@ -88,10 +87,8 @@ class Component extends &StateFieldsMixin &InstanceFunctionBindingMixin VirtualN
     new @class @props
 
   release: ->
-    log.warn "Component released - Only a partial release for now"
     @_virtualSubtree?.release @
     @_virtualSubtree = null
-    @_refs = null
 
   ## withElement
     SEE: VirtualElement#withElement for more

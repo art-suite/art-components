@@ -342,12 +342,11 @@ class VirtualElement extends VirtualNode
 
     each child in oldChildren when child
       child._unmount()
-      child.release() if virtualElementPoolEnabled
-
-    fromVirtualElement._children = null if virtualElementPoolEnabled
 
     @_children = newChildren
     @_updateConcreteChildren()
+
+  _releaseUnusedChildren: (oldChildren) ->
 
   _updateConcreteChildren: ->
     @_setElementChildren @concreteChildren
