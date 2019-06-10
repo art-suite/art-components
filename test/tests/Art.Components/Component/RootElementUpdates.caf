@@ -72,7 +72,7 @@ suite:
             :TestElement
 
   legalUpdates:
-    nonRootComponentsCanChangeTheirRootElement: ->
+    typeChangeOnNonGlobalRootOk: ->
       chainedTest ->
         class NonRootComponent extends Component
 
@@ -81,11 +81,8 @@ suite:
 
           render: ->
             if @useMain
-              log "render NonRootComponent with TestElement"
-              TestElement()
-            else
-              log "render NonRootComponent with TestOtherElement"
-              TestOtherElement()
+                  TestElement       name: :alice
+            else  TestOtherElement  name: :bill
 
         class RootComponent extends Component
 
@@ -96,29 +93,59 @@ suite:
         RootComponent()
         ._instantiate()
         .onNextReady()
-        .then (foo) ->
-          [nonRoot] = foo.find :NonRootComponent
-          {foo, nonRoot}
-
+        .then (rootComponent) -> {rootComponent}
 
       .tapTest
-        "initial render" ({foo}) ->
+        "initial render" ({rootComponent}) ->
           assert.eq
-            foo._virtualSubtree.element.elementType
-            :TestElement
+            # array child in rootComponent._virtualSubtree.element.children with child.elementType
+            rootComponent._virtualSubtree.element.inspectedObjects
+            ConcreteTestElement:
+              children: [] ConcreteTestElement: props: name: :alice
 
-        "setup for alt render" ({foo, nonRoot}) ->
-          assert.exists nonRoot
-          nonRoot.clearUseMain()
-          foo.onNextReady()
+        "setup for alt render" ({rootComponent}) ->
+          [nonRootComponent] = rootComponent.find :NonRootComponent
+          assert.exists nonRootComponent
 
-        "alt render didn't change" ({foo, nonRoot}) ->
+          nonRootComponent.clearUseMain()
+          rootComponent.onNextReady()
+
+        "alt render didn't change" ({rootComponent}) ->
           assert.eq
-            nonRoot._virtualSubtree.element.elementType
-            :TestOtherElement
-            "" nonRoot's _virtualSubtree.element.elementType
+            rootComponent._virtualSubtree.element.inspectedObjects
+            ConcreteTestElement:
+              children: [] ConcreteTestOtherElement: props: name: :bill
+            "" rootComponent's _virtualSubtree.element.elementType
 
-          assert.eq
-            foo._virtualSubtree.element.elementType
-            :TestOtherElement
-            "" foo's _virtualSubtree.element.elementType
+    keyChangeResultsInNewConcreteElement: ->
+      chainedTest ->
+        class NonRootComponent extends Component
+          @stateFields  useMain: true
+          render: ->    TestElement key: if @useMain then :alice else :bill
+
+        class RootComponent extends Component
+          render: -> TestElement NonRootComponent()
+
+        RootComponent()
+        ._instantiate()
+        .onNextReady()
+
+      .thenTest
+        "initial render" (rootComponent) ->
+          {}
+            rootComponent
+            concreteElement: rootComponent._virtualSubtree.element.children[0]
+
+      .tapTest
+        "setup for alt render" ({rootComponent}) ->
+          [nonRootComponent] = rootComponent.find :NonRootComponent
+          assert.exists nonRootComponent
+
+          nonRootComponent.clearUseMain()
+          rootComponent.onNextReady()
+
+        "alt render resulted in new concrete element" ({rootComponent, concreteElement}) ->
+          assert.true
+            concreteElement !=
+            rootComponent._virtualSubtree.element.children[0]
+            "" old and new concrete elements should be different objects when key changes
