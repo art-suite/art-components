@@ -258,7 +258,7 @@ class VirtualElement extends VirtualNode
     Counters.virtualElementInstantiated()
 
     @_element = try
-      instantiatedChildren = array child, childIndex in-array @children when
+      instantiatedChildren = array child, childIndex in-array @children
         child = @children[childIndex] = child._instantiate parentComponent, @
 
         child.element
