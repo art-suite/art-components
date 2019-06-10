@@ -1,5 +1,7 @@
 import &StandardImport, &ComponentEpoch
 
+ArtComponents = &namespace
+
 emptyObject = {}
 class VirtualNode extends BaseClass
 
@@ -11,8 +13,8 @@ class VirtualNode extends BaseClass
     @_initVirtualNode props
 
   _initVirtualNode: (props) ->
+    @_resetVirtualNodeProps()
     @_released        = false
-    @_parentComponent = null
     @_renderedIn      = VirtualNode.currentlyRendering
 
     @key = if props?
@@ -22,18 +24,27 @@ class VirtualNode extends BaseClass
       null
 
     @props = @_rawProps = props
+
+  _resetVirtualNodeProps: ->
+    @_released = true
     @_propsLength = -1
+
+    @_renderedIn =
+    @_parentVirtualNode =
+    @_parentComponent =
+    @key =
+    @props =
+    @_rawProps = null
+
+  _resetAllProps: ->
+    @_resetVirtualNodeProps()
 
   @getter
     "rawProps reusable parentComponent renderedIn"
     inspectedName:      -> "" VirtualNode<#{@key}>
     inspectedNameAndId: -> "" #{@inspectedName}-#{@uniqueId}
-    inspectedPath: ->
-      if @parentComponent
-        @parentComponent.inspectedPath + "/"
-      else
-        ""
-      + @inspectedName
+    inspectedPath:      -> @parentComponent?.inspectedPathName ? ""
+    inspectedPathName:  -> @inspectedPath + "/" + @inspectedName
 
     propsLength: ->
       if @_propsLength >= 0
@@ -73,18 +84,15 @@ class VirtualNode extends BaseClass
     found = @findElements pattern, options
     found?[0]
 
+  @getter
+    parentVirtualElement: ->
+      if @_parentVirtualNode instanceof ArtComponents.VirtualElement
+        @_parentVirtualNode
+      else @_parentVirtualNode?.parentVirtualElement
+
   #####################
   # PRIVATE
   #####################
-
-  _resetVirtualNodeProps: ->
-    @_released = true
-    @_propsLength = -1
-    @_parentComponent =
-    @key = @props = @_rawProps = null
-
-  _resetAllProps: ->
-    @_resetVirtualNodeProps()
 
   _validateChildren: (children) ->
     return children unless children
@@ -124,6 +132,5 @@ class VirtualNode extends BaseClass
       Virtual-AIM sub-branch is fully generated
       All True-AIM elements have been created and assembled
     returns this
-  _instantiate: (parentComponent) ->
-    @_parentComponent = parentComponent
+  _instantiate: (@_parentComponent, @_parentVirtualNode) ->
     @

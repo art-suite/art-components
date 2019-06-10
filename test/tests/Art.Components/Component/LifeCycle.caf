@@ -62,7 +62,9 @@ suite:
             TestElement name: :child
 
         wc = WrapperComponent().instantiateAsTopComponent()
-        .onNextReady -> wc.setState includeComponent: false
+        .onNextReady ->
+          wc.setState includeComponent: false
+          wc.onNextReady()
 
   preprocessProps: ->
     test "instantiate with preprocessProps", ->

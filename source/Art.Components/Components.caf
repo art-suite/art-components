@@ -9,4 +9,4 @@ getMergedTextPropValue = (oldValue, v) ->
 
 []
   [] Component, :createAndInstantiateTopComponent :createComponentFactory
-  &Helpers
+  onNextReady: (callback) -> componentEpoch.onNextReady callback

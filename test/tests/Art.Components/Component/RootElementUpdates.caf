@@ -1,0 +1,124 @@
+import &StandardImport
+
+suite:
+  illegalUpdates:
+    rootComponentStillCantChangeRootElement: ->
+      chainedTest ->
+        class Foo extends Component
+
+          @stateFields
+            useMain: true
+
+          render: ->
+            if @useMain
+                  TestElement()
+            else  TestOtherElement()
+
+        Foo()
+        ._instantiate()
+        .onNextReady()
+
+      .tapTest
+        "initial render" (foo) ->
+          assert.eq
+            foo._virtualElements.element.elementType
+            :TestElement
+
+        "setup for alt render" (foo) ->
+          foo.clearUseMain()
+          foo.onNextReady()
+
+        "alt render didn't change" (foo) ->
+          assert.eq
+            foo._virtualElements.element.elementType
+            :TestElement
+
+    nonRootComponentsCantChangeTheirRootElementIfGloballyRoot: ->
+      chainedTest ->
+        class NonRootComponent extends Component
+
+          @stateFields
+            useMain: true
+
+          render: ->
+            if @useMain
+                  TestElement()
+            else  TestOtherElement()
+
+        class RootComponent extends Component
+
+          render: ->
+            NonRootComponent()
+
+        RootComponent()
+        ._instantiate()
+        .onNextReady()
+
+      .tapTest
+        "initial render" (foo) ->
+          assert.eq
+            foo._virtualElements.element.elementType
+            :TestElement
+
+        "setup for alt render" (foo) ->
+          [nonRoot] = foo.find :NonRootComponent
+          assert.exists nonRoot
+          nonRoot.clearUseMain()
+          foo.onNextReady()
+
+        "alt render didn't change" (foo) ->
+          assert.eq
+            foo._virtualElements.element.elementType
+            :TestElement
+
+  legalUpdates:
+    nonRootComponentsCanChangeTheirRootElement: ->
+      chainedTest ->
+        class NonRootComponent extends Component
+
+          @stateFields
+            useMain: true
+
+          render: ->
+            if @useMain
+              log "render NonRootComponent with TestElement"
+              TestElement()
+            else
+              log "render NonRootComponent with TestOtherElement"
+              TestOtherElement()
+
+        class RootComponent extends Component
+
+          render: ->
+            TestElement
+              NonRootComponent()
+
+        RootComponent()
+        ._instantiate()
+        .onNextReady()
+        .then (foo) ->
+          [nonRoot] = foo.find :NonRootComponent
+          {foo, nonRoot}
+
+
+      .tapTest
+        "initial render" ({foo}) ->
+          assert.eq
+            foo._virtualElements.element.elementType
+            :TestElement
+
+        "setup for alt render" ({foo, nonRoot}) ->
+          assert.exists nonRoot
+          nonRoot.clearUseMain()
+          foo.onNextReady()
+
+        "alt render didn't change" ({foo, nonRoot}) ->
+          assert.eq
+            nonRoot._virtualElements.element.elementType
+            :TestOtherElement
+            "" nonRoot's _virtualElements.element.elementType
+
+          assert.eq
+            foo._virtualElements.element.elementType
+            :TestOtherElement
+            "" foo's _virtualElements.element.elementType

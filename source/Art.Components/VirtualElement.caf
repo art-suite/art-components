@@ -62,14 +62,13 @@ class VirtualElement extends VirtualNode
   @getter
     inspectedName: ->
       {key, elementClassName} = @
-      "Virtual-#{elementClassName}#{if key then "-" + key  else ''}"
+      "VirtualElement-#{elementClassName}#{if key then "-" + key  else ''}"
 
-    inspectedObjectsContents: ->
-      if @children.length > 0
-        compactFlattenAllFast {@props}, toInspectedObjects @children
-      else {} @props
-
-    inspectedObjects: -> "#{@inspectedName}": @inspectedObjectsContents
+    inspectedObjects: ->
+      [@elementClassName]: merge {}
+        key:      if @key? then @key
+        props:    if objectHasKeys @props   then merge @props
+        children: if @children?.length > 0  then toInspectedObjects @children
 
   findElements: (pattern, options, matches = []) ->
     if foundMatch = @testMatchesPattern pattern
@@ -251,16 +250,16 @@ class VirtualElement extends VirtualNode
     fully generate Virtual-AIM subbranch
     fully create all AIM elements
     OUT: this
-  _instantiate: (parentComponent) ->
+  _instantiate: (parentComponent, parentVirtualNode) ->
     if parentComponent != @_renderedIn && parentComponent && @_renderedIn
-      return @clone()._instantiate parentComponent
+      return @clone()._instantiate parentComponent, parentVirtualNode
 
     super
     Counters.virtualElementInstantiated()
 
     @_element = try
       instantiatedChildren = array child, childIndex in-array @children when
-        child = @children[childIndex] = child._instantiate parentComponent
+        child = @children[childIndex] = child._instantiate parentComponent, @
 
         child.element
         ? throw new Error "child(#{child.uniqueId}) #{childIndex}/#{@children.length} #{child.inspectedName} not instantiated"
@@ -323,6 +322,14 @@ class VirtualElement extends VirtualNode
 
     true
 
+  validateIsVirtualElement: (ve) ->
+    unless ve instanceof VirtualNode
+      log {}
+        self: @
+        ve
+      throw new Error "Expecting ve to be a virtualElement"
+    ve
+
   ## _slowUpdateChildren
     IN: fromVirtualElement <VirtualElement>
   _slowUpdateChildren: (fromVirtualElement) ->
@@ -332,7 +339,7 @@ class VirtualElement extends VirtualNode
     newChildren = array newChild from-array fromVirtualElement.children
       if oldChild = @_extractOldChildToUpdate newChild
             oldChild._updateFrom newChild
-      else  newChild._instantiate @_parentComponent
+      else  newChild._instantiate @_parentComponent, @
 
     each child in oldChildren when child
       child._unmount()
@@ -340,10 +347,18 @@ class VirtualElement extends VirtualNode
 
     fromVirtualElement._children = null if virtualElementPoolEnabled
 
-    @_setElementChildren array child in-array newChildren
-      child.element
-
     @_children = newChildren
+    @_updateElementChildrenFromVirtualChildren()
+
+  _updateElementChildrenFromVirtualChildren: ->
+    # log _updateElementChildrenFromVirtualChildren: before: @element.children[0]
+    @_setElementChildren array child in-array @_children
+      @validateIsVirtualElement child
+      child.element
+      ? throw new Error "VirtualElement: All children should be instantiated instances of VirtualNode."
+    # log _updateElementChildrenFromVirtualChildren: after: @element.children[0]
+    @
+
 
   ## _updateChildren
     OUT: <Boolean> true if children changed
@@ -366,4 +381,5 @@ class VirtualElement extends VirtualNode
 
     propsChanged    = @_updateElementProps fromVirtualElement.props
     childrenChanged = @_updateChildren fromVirtualElement
+
     @

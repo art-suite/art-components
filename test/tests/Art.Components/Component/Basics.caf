@@ -1,0 +1,85 @@
+import &StandardImport
+
+suite: ->
+  test "simplest" ->
+    class MyComponent extends Component
+      render: -> TestElement name: @props.name
+
+    assert.eq
+      MyComponent name: :foo
+      ._instantiate()
+      .inspectedObjects
+
+      MyComponent:
+        props:    name:        "foo"
+        rendered: TestElement: props: name: "foo"
+
+  test "nested VirtualElements" ->
+    class MyComponent extends Component
+      render: ->
+        TestElement
+          {} @props.name
+          TestElement name: @props.name + "1"
+          TestElement name: @props.name + "2"
+
+    assert.eq
+      MyComponent name: :foo
+      ._instantiate()
+      .inspectedObjects
+
+      MyComponent:
+        props: name: :foo
+        rendered:
+          TestElement:
+            props:    name: :foo
+            children: []
+              {} TestElement: props: name: :foo1
+              {} TestElement: props: name: :foo2
+
+
+  test "nested Components" ->
+    class SubComponent extends Component
+      render: ->
+        TestElement {} @props.name
+
+    class MyComponent extends Component
+      render: ->
+        TestElement
+          name: @props.name
+          SubComponent name: @props.name + :Sub
+
+    assert.eq
+      MyComponent name: :foo
+      ._instantiate()
+      .inspectedObjects
+
+      MyComponent:
+        props: name: :foo
+        rendered:
+          TestElement:
+            props:    name: :foo
+            children: []
+              SubComponent:
+                props:    name: :fooSub
+                rendered: TestElement: props: name: :fooSub
+
+  test "directly nested Components" ->
+    class SubComponent extends Component
+      render: ->
+        TestElement {} @props.name
+
+    class MyComponent extends Component
+      render: ->
+        SubComponent name: @props.name + :Sub
+
+    assert.eq
+      MyComponent name: :foo
+      ._instantiate()
+      .inspectedObjects
+
+      MyComponent:
+        props: name: :foo
+        rendered:
+          SubComponent:
+            props:    name:        :fooSub
+            rendered: TestElement: props: name: :fooSub

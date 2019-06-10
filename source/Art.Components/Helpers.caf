@@ -1,21 +1,4 @@
-import &StandardImport, &ComponentEpoch, {} &Component
-
-getMergedTextPropValue = (oldValue, v) ->
-  if oldValue?
-    if isArray oldValue
-          oldValue.concat v
-    else  [] oldValue, v
-  else v
+import &StandardImport
 
 class Helpers
-  @resetReactPerfCounters: ->
-    &VirtualElement.resetCounters()
-    Component.resetCounters()
-
-  @getReactPerfCounters: ->
-    VirtualElement: &VirtualElement.getCounters()
-    Component:      &Component.getCounters()
-
-  @onNextReady: (callback) -> componentEpoch.onNextReady callback
-
   @objectTreeFactoryOptions: {}

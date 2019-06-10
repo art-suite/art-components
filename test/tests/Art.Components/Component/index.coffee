@@ -4,6 +4,7 @@
 module.exports = require './namespace'
 module.exports
 .addModules
+  Basics:              require './Basics'             
   CanUpdateFrom:       require './CanUpdateFrom'      
   ChildrenProp:        require './ChildrenProp'       
   Clone:               require './Clone'              
@@ -11,6 +12,7 @@ module.exports
   Inspection:          require './Inspection'         
   LifeCycle:           require './LifeCycle'          
   Refs:                require './Refs'               
+  RootElementUpdates:  require './RootElementUpdates' 
   State:               require './State'              
   StateFields:         require './StateFields'        
   UpdateFrom:          require './UpdateFrom'         

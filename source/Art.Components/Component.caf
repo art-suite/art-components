@@ -105,9 +105,9 @@ class Component extends &StateFieldsMixin &InstanceFunctionBindingMixin VirtualN
     null
 
   # OUT: this
-  instantiateAsTopComponent: (bindToOrCreateNewParentElementProps) ->
+  instantiateAsTopComponent: ->
     Component.topComponentInstances.push @
-    @_instantiate null # , bindToOrCreateNewParentElementProps
+    @_instantiate()
 
   unbindTopComponent: ->
     unless 0 <= index = Component.topComponentInstances.indexOf @
@@ -122,9 +122,22 @@ class Component extends &StateFieldsMixin &InstanceFunctionBindingMixin VirtualN
 
   @getter
     inspectedName: -> "#{@className}#{if @key then "-"+@key  else ''}"
-    inspectedObjects: ->
-      [@inspectedName]:
-        @_virtualElements?.inspectedObjectsContents ? {@props}
+    inspectedObjects: (verbose) ->
+      inspectedObjects = [@inspectedName]: merge {}
+        @key
+        props:    if objectHasKeys @props then merge @props
+        state:    if objectHasKeys @state then merge @state
+        rendered: @_virtualElements?.inspectedObjects
+
+      if verbose
+        {}
+          class: @class.getNamespacePathWithExtendsInfo()
+          @inspectedPathName
+          inspectedObjects
+
+      else
+        inspectedObjects
+
 
     mounted: -> @_mounted
     element: -> @_virtualElements?.element
@@ -489,9 +502,9 @@ class Component extends &StateFieldsMixin &InstanceFunctionBindingMixin VirtualN
   ## _instantiate
     OUT: this
   emptyState = {}
-  _instantiate: (parentComponent) ->
+  _instantiate: (parentComponent, parentVirtualNode) ->
     if parentComponent != @_renderedIn && parentComponent? && @_renderedIn?
-      return @clone()._instantiate parentComponent
+      return @clone()._instantiate parentComponent, parentVirtualNode
 
     super
 
@@ -531,7 +544,7 @@ class Component extends &StateFieldsMixin &InstanceFunctionBindingMixin VirtualN
   _instantiateVirtualElements: ->
     if @_virtualElements = @_render()
       VirtualNode.currentlyRendering = @
-      @_virtualElements._instantiate @
+      @_virtualElements._instantiate @, @
       VirtualNode.currentlyRendering = null
 
   _render: ->
@@ -545,7 +558,9 @@ class Component extends &StateFieldsMixin &InstanceFunctionBindingMixin VirtualN
     VirtualNode.currentlyRendering = @
     try
       rendered = @render()
-      throw new Error "#{@className}: render must return a VirtualNode. Got: #{inspect rendered}" unless rendered instanceof VirtualNode
+      unless rendered instanceof VirtualNode
+        @_reportInvalidRenderResult rendered
+
     catch error
       log.error "Error rendering #{@inspectedPath}", error
       rendered = null
@@ -566,38 +581,52 @@ class Component extends &StateFieldsMixin &InstanceFunctionBindingMixin VirtualN
     @_propsChanged(componentInstance) || @_pendingState
 
   # renders the component and updates the Virtual-AIM as needed.
-  _reRenderComponent: ->
+  _reRenderAndUpdateComponent: ->
 
     unless @_virtualElements
       @_instantiateVirtualElements()
     else if newRenderResult = @_render()
 
       if @_virtualElements._canUpdateFrom newRenderResult
-        # log "Component._reRenderComponent _updateFrom #{newRenderResult.inspectedName}/#{newRenderResult.uniqueId}"
+        # log "Component._reRenderAndUpdateComponent _updateFrom #{newRenderResult.inspectedName}/#{newRenderResult.uniqueId}"
         VirtualNode.currentlyRendering = @
         @_virtualElements._updateFrom newRenderResult
         VirtualNode.currentlyRendering = null
 
-      else
-        # TODO - this should probably NOT be an error, but it isn't easy to solve.
-        # Further, this is wrapped up with the pending feature of optionally returing an array of Elements from the render function.
-        # Last, this should not be special-cased if possible. VitualElement children handling code should be used to handle these updates.
-
-        console.error
-          """
-            Art.Components ERROR - The render function's top-level Component/VirtualElement changed 'too much.' The VirtualNode returned by a component's render function cannot change its Type or Key.
-
-            Solution: Wrap your changing VirtualNode with a non-changing VirtualElement.
-
-            Offending component: #{@classPathName}
-            Offending component assigned to: self.offendingComponent
-
-        console.log "CHANGED-TOO-MUCH-ERROR-DETAILS - all these properties must be the same on the oldRoot and newRoot",
-          oldRoot: select @_virtualElements, "key", "elementClassName", "class"
-          newRoot: select newRenderResult, "key", "elementClassName", "class"
-        self.offendingComponent = @
+      else if @ extract parentVirtualElement
         @_virtualElements?._unmount()
-        (@_virtualElements = newRenderResult)._instantiate @
+        @_virtualElements = newRenderResult
+        ._instantiate @
+        parentVirtualElement._updateElementChildrenFromVirtualChildren()
+
+      else @_reportInvalidRenderResult newRenderResult
+
+    null
+
+  ## _reportInvalidRenderResult
+  _reportInvalidRenderResult: (newRenderResult) ->
+    log.error
+      "" Art.Components Component Reneer Error: (render ignored)\n\n
+      + if newRenderResult instanceof VirtualNode
+        """
+          The render function's top-level Component/VirtualElement changed
+          too much: The VirtualNode returned by a component's render function
+          cannot change its Type or Key if it is the root node of the entire
+          virtual tree.
+
+          Solution: Wrap your changing VirtualNode with a non-changing VirtualElement.
+
+      else
+        """
+          Invalid render result. Must return a VirtualElement or Component instance.
+
+    log invalidRenderDetails:
+      component:              @getInspectedObjects true
+      invalidRenderResult:    newRenderResult
+      keyChanged:             @_virtualElements?.key != newRenderResult?.key
+      typeChanged:
+        @_virtualElements?.class != newRenderResult?.class
+        || @_virtualElements.elementClassName != newRenderResult.elementClassName
 
   ## _updateFrom
     EFFECT:
@@ -673,7 +702,7 @@ class Component extends &StateFieldsMixin &InstanceFunctionBindingMixin VirtualN
       @_resolvePendingStateUpdates()
       false
 
-    @_reRenderComponent()
+    @_reRenderAndUpdateComponent()
 
 
   ### _updateComponent
