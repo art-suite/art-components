@@ -198,7 +198,6 @@ class Component extends &StateFieldsMixin &InstanceFunctionBindingMixin VirtualN
 
     matches
 
-
   ##############################
     propFields declaration
   ##############################

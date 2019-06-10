@@ -43,9 +43,9 @@ class VirtualElement extends VirtualNode
     @_validateChildren children if devMode
     @_element = null
 
-  #####################
-  # Getters
-  #####################
+  ###############################
+    Getters & Inspection
+  ###############################
   @getter "elementClassName released element",
     children: ->
       if !@_children
@@ -56,10 +56,14 @@ class VirtualElement extends VirtualNode
 
       @_children
 
-  #####################
-  # Inspection
-  #####################
-  @getter
+    concreteChildren: ->
+      array child in-array @_children
+        @validateIsVirtualElement child
+        child extract element
+        if !element || element instanceof VirtualNode
+          throw new Error "VirtualElement: All children should be instantiated instances of VirtualNode."
+        element
+
     inspectedName: ->
       {key, elementClassName} = @
       "VirtualElement-#{elementClassName}#{if key then "-" + key  else ''}"
@@ -344,15 +348,6 @@ class VirtualElement extends VirtualNode
 
     @_children = newChildren
     @_updateConcreteChildren()
-
-  @getter
-    concreteChildren: ->
-      array child in-array @_children
-        @validateIsVirtualElement child
-        child extract element
-        if !element || element instanceof VirtualNode
-          throw new Error "VirtualElement: All children should be instantiated instances of VirtualNode."
-        element
 
   _updateConcreteChildren: ->
     @_setElementChildren @concreteChildren
