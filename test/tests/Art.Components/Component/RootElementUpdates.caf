@@ -21,7 +21,7 @@ suite:
       .tapTest
         "initial render" (foo) ->
           assert.eq
-            foo._virtualElements.element.elementType
+            foo._virtualSubtree.element.elementType
             :TestElement
 
         "setup for alt render" (foo) ->
@@ -30,7 +30,7 @@ suite:
 
         "alt render didn't change" (foo) ->
           assert.eq
-            foo._virtualElements.element.elementType
+            foo._virtualSubtree.element.elementType
             :TestElement
 
     nonRootComponentsCantChangeTheirRootElementIfGloballyRoot: ->
@@ -57,7 +57,7 @@ suite:
       .tapTest
         "initial render" (foo) ->
           assert.eq
-            foo._virtualElements.element.elementType
+            foo._virtualSubtree.element.elementType
             :TestElement
 
         "setup for alt render" (foo) ->
@@ -68,7 +68,7 @@ suite:
 
         "alt render didn't change" (foo) ->
           assert.eq
-            foo._virtualElements.element.elementType
+            foo._virtualSubtree.element.elementType
             :TestElement
 
   legalUpdates:
@@ -104,7 +104,7 @@ suite:
       .tapTest
         "initial render" ({foo}) ->
           assert.eq
-            foo._virtualElements.element.elementType
+            foo._virtualSubtree.element.elementType
             :TestElement
 
         "setup for alt render" ({foo, nonRoot}) ->
@@ -114,11 +114,11 @@ suite:
 
         "alt render didn't change" ({foo, nonRoot}) ->
           assert.eq
-            nonRoot._virtualElements.element.elementType
+            nonRoot._virtualSubtree.element.elementType
             :TestOtherElement
-            "" nonRoot's _virtualElements.element.elementType
+            "" nonRoot's _virtualSubtree.element.elementType
 
           assert.eq
-            foo._virtualElements.element.elementType
+            foo._virtualSubtree.element.elementType
             :TestOtherElement
-            "" foo's _virtualElements.element.elementType
+            "" foo's _virtualSubtree.element.elementType

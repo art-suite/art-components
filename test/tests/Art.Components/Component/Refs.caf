@@ -68,7 +68,7 @@ suite: ->
 
     myComponent = MyComponent key: :myComponentRenderedManually
     ._instantiate()
-    wrapper = myComponent._virtualElements
+    wrapper = myComponent._virtualSubtree
 
     assert.eq
       myComponent
@@ -77,7 +77,7 @@ suite: ->
 
     assert.eq
       wrapper
-      wrapper._virtualElements.renderedIn
+      wrapper._virtualSubtree.renderedIn
       "" wrapper is the renderedIn for it's top-most TestElement
 
     assert.eq
@@ -89,7 +89,7 @@ suite: ->
         because it is rendered first in myComponent and then cloned in wrapper
 
     assert.eq
-      Object.keys(myComponent._virtualElements.refs).sort()
+      Object.keys(myComponent._virtualSubtree.refs).sort()
       :blueRectangle :redRectangle :wrapper
 
     assert.eq

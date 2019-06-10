@@ -78,7 +78,7 @@ class Component extends &StateFieldsMixin &InstanceFunctionBindingMixin VirtualN
     @_refs =
     @_pendingState =
     @_pendingUpdates =
-    @_virtualElements = null
+    @_virtualSubtree = null
 
     @_mounted =
     @_wasMounted =
@@ -89,15 +89,15 @@ class Component extends &StateFieldsMixin &InstanceFunctionBindingMixin VirtualN
 
   release: ->
     log.warn "Component released - Only a partial release for now"
-    @_virtualElements?.release @
-    @_virtualElements = null
+    @_virtualSubtree?.release @
+    @_virtualSubtree = null
     @_refs = null
 
   ## withElement
     SEE: VirtualElement#withElement for more
     IN: f = (concreteElement) -> x
     OUT: promise.then (x) ->
-  withElement: (f) -> @_virtualElements.withElement f
+  withElement: (f) -> @_virtualSubtree.withElement f
 
   rerenderAll: ->
     @_queueRerender()
@@ -127,7 +127,7 @@ class Component extends &StateFieldsMixin &InstanceFunctionBindingMixin VirtualN
         @key
         props:    if objectHasKeys @props then merge @props
         state:    if objectHasKeys @state then merge @state
-        rendered: @_virtualElements?.inspectedObjects
+        rendered: @_virtualSubtree?.inspectedObjects
 
       if verbose
         {}
@@ -140,7 +140,7 @@ class Component extends &StateFieldsMixin &InstanceFunctionBindingMixin VirtualN
 
 
     mounted: -> @_mounted
-    element: -> @_virtualElements?.element
+    element: -> @_virtualSubtree?.element
 
     subcomponents: ->
       ret = []
@@ -150,12 +150,12 @@ class Component extends &StateFieldsMixin &InstanceFunctionBindingMixin VirtualN
     refs: ->
       unless @_refs
         @_refs = {}
-        @_virtualElements?._captureRefs @
+        @_virtualSubtree?._captureRefs @
 
       @_refs
 
   eachSubcomponent: (f) ->
-    @_virtualElements?.eachInComponent (node) ->
+    @_virtualSubtree?.eachInComponent (node) ->
       f node if node instanceof Component
 
     null
@@ -190,10 +190,10 @@ class Component extends &StateFieldsMixin &InstanceFunctionBindingMixin VirtualN
 
   findElements: (pattern, options, matches = []) ->
 
-    if @_virtualElements
+    if @_virtualSubtree
       if options?.verbose
         log "findElements in #{@inspectedName}"
-      @_virtualElements.findElements pattern, options, matches
+      @_virtualSubtree.findElements pattern, options, matches
 
     matches
 
@@ -486,7 +486,7 @@ class Component extends &StateFieldsMixin &InstanceFunctionBindingMixin VirtualN
     @_removeHotInstance()
     @_componentWillUnmount()
 
-    @_virtualElements?._unmount()
+    @_virtualSubtree?._unmount()
     @_mounted = false
 
   _addHotInstance: ->
@@ -536,15 +536,15 @@ class Component extends &StateFieldsMixin &InstanceFunctionBindingMixin VirtualN
 
       true
 
-    @_instantiateVirtualElements()
+    @_instantiateVirtualSubtree()
 
     @_wasMounted = @_mounted = true
     @
 
-  _instantiateVirtualElements: ->
-    if @_virtualElements = @_render()
+  _instantiateVirtualSubtree: ->
+    if @_virtualSubtree = @_render()
       VirtualNode.currentlyRendering = @
-      @_virtualElements._instantiate @, @
+      @_virtualSubtree._instantiate @, @
       VirtualNode.currentlyRendering = null
 
   _render: ->
@@ -583,19 +583,19 @@ class Component extends &StateFieldsMixin &InstanceFunctionBindingMixin VirtualN
   # renders the component and updates the Virtual-AIM as needed.
   _reRenderAndUpdateComponent: ->
 
-    unless @_virtualElements
-      @_instantiateVirtualElements()
+    unless @_virtualSubtree
+      @_instantiateVirtualSubtree()
     else if newRenderResult = @_render()
 
-      if @_virtualElements._canUpdateFrom newRenderResult
+      if @_virtualSubtree._canUpdateFrom newRenderResult
         # log "Component._reRenderAndUpdateComponent _updateFrom #{newRenderResult.inspectedName}/#{newRenderResult.uniqueId}"
         VirtualNode.currentlyRendering = @
-        @_virtualElements._updateFrom newRenderResult
+        @_virtualSubtree._updateFrom newRenderResult
         VirtualNode.currentlyRendering = null
 
       else if @ extract parentVirtualElement
-        @_virtualElements?._unmount()
-        @_virtualElements = newRenderResult
+        @_virtualSubtree?._unmount()
+        @_virtualSubtree = newRenderResult
         ._instantiate @
         parentVirtualElement._updateElementChildrenFromVirtualChildren()
 
@@ -623,10 +623,10 @@ class Component extends &StateFieldsMixin &InstanceFunctionBindingMixin VirtualN
     log invalidRenderDetails:
       component:              @getInspectedObjects true
       invalidRenderResult:    newRenderResult
-      keyChanged:             @_virtualElements?.key != newRenderResult?.key
+      keyChanged:             @_virtualSubtree?.key != newRenderResult?.key
       typeChanged:
-        @_virtualElements?.class != newRenderResult?.class
-        || @_virtualElements.elementClassName != newRenderResult.elementClassName
+        @_virtualSubtree?.class != newRenderResult?.class
+        || @_virtualSubtree.elementClassName != newRenderResult.elementClassName
 
   ## _updateFrom
     EFFECT:

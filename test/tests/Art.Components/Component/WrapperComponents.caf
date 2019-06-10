@@ -40,7 +40,7 @@ suite:
         # log {} tt.renderedIn, tt.inspectedName
 
         # log "setText myComponent:#{myComponent.inspectedName} #{myComponent.uniqueId}"
-        # myComponent._virtualElements.setText :bar
+        # myComponent._virtualSubtree.setText :bar
         myComponent.onNextReady()
 
       :secondRender (myComponent) ->
@@ -80,7 +80,7 @@ suite:
           myComponent.find "MySimpleComponent"
           .length
           1
-        myComponent._virtualElements.setText :bar
+        myComponent._virtualSubtree.setText :bar
         myComponent.onNextReady()
 
       :secondRender (myComponent) ->
@@ -123,7 +123,7 @@ suite:
           myComponent.find "MySimpleComponent"
           .length
           1
-        myComponent._virtualElements.setText :bar
+        myComponent._virtualSubtree.setText :bar
         myComponent.onNextReady()
 
       "thirdRender"
@@ -167,7 +167,7 @@ suite:
           myComponent.findElements "firstElementKey"
           .length
           1
-        myComponent._virtualElements.setNumElements 2
+        myComponent._virtualSubtree.setNumElements 2
         myComponent.onNextReady()
 
     #   "thirdRender"
