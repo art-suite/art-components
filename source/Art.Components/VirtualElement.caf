@@ -348,17 +348,20 @@ class VirtualElement extends VirtualNode
     fromVirtualElement._children = null if virtualElementPoolEnabled
 
     @_children = newChildren
-    @_updateElementChildrenFromVirtualChildren()
+    @_updateConcreteChildren()
 
-  _updateElementChildrenFromVirtualChildren: ->
-    # log _updateElementChildrenFromVirtualChildren: before: @element.children[0]
-    @_setElementChildren array child in-array @_children
-      @validateIsVirtualElement child
-      child.element
-      ? throw new Error "VirtualElement: All children should be instantiated instances of VirtualNode."
-    # log _updateElementChildrenFromVirtualChildren: after: @element.children[0]
+  @getter
+    concreteChildren: ->
+      array child in-array @_children
+        @validateIsVirtualElement child
+        child extract element
+        if !element || element instanceof VirtualNode
+          throw new Error "VirtualElement: All children should be instantiated instances of VirtualNode."
+        element
+
+  _updateConcreteChildren: ->
+    @_setElementChildren @concreteChildren
     @
-
 
   ## _updateChildren
     OUT: <Boolean> true if children changed
