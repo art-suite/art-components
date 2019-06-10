@@ -258,23 +258,18 @@ class VirtualElement extends VirtualNode
     Counters.virtualElementInstantiated()
 
     @_element = try
-      instantiatedChildren = array child, childIndex in-array @children
-        child = @children[childIndex] = child._instantiate parentComponent, @
-
-        child.element
-        ? throw new Error "child(#{child.uniqueId}) #{childIndex}/#{@children.length} #{child.inspectedName} not instantiated"
-
-      @_element = @_newElement
+      @_newElement
         @elementClassName
         @props
-        instantiatedChildren
+        array child, childIndex in-array @children
+          @children[childIndex] = child._instantiate parentComponent, @
+          .element
 
     catch error
-      errors = true
       log.error VirtualElement._instantiate: {}
-          error
-          @elementClassName
-          @props
+        error
+        @elementClassName
+        @props
 
       @_newErrorElement()
 
@@ -362,6 +357,7 @@ class VirtualElement extends VirtualNode
   _updateConcreteChildren: ->
     @_setElementChildren @concreteChildren
     @
+
 
   ## _updateChildren
     OUT: <Boolean> true if children changed
