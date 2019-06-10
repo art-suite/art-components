@@ -121,6 +121,7 @@ class Component extends &StateFieldsMixin &InstanceFunctionBindingMixin VirtualN
   ######################
 
   @getter
+    verboseInspectedObjects: -> @getInspectedObjects true
     inspectedName: -> "#{@className}#{if @key then "-"+@key  else ''}"
     inspectedObjects: (verbose) ->
       inspectedObjects = [@inspectedName]: merge {}
@@ -597,6 +598,7 @@ class Component extends &StateFieldsMixin &InstanceFunctionBindingMixin VirtualN
         @_virtualSubtree?._unmount()
         @_virtualSubtree = newRenderResult
         ._instantiate @
+
         parentVirtualElement._updateConcreteChildren()
 
       else @_reportInvalidRenderResult newRenderResult
