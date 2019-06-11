@@ -27,9 +27,14 @@ renderRecursiveStructure = (depth = 2) ->
         renderRecursiveStructure depth - 1
 
 if true
-  # &ObjectTreeFactory extract
-  &ArtObjectTreeFactory/source/ArtObjectTreeFactory/ObjectTreeFactory extract
-    createObjectTreeFactory
+  if false
+    &ObjectTreeFactory extract
+      createObjectTreeFactory
+  else
+    &ArtObjectTreeFactory extract
+      createObjectTreeFactory
+
+  # log createObjectTreeFactory.toString()
 
   TestElement = createObjectTreeFactory
     newRe
@@ -98,47 +103,26 @@ class RecycleableElement
     recycleRe @
 
 suite:
-  normal: ->
-    benchmark "1 RecycleableElement" ->
-      newRe()
+  normal:
+    new: ->
+      benchmark "1 RecycleableElement"  -> newRe()
+      benchmark "7 RecycleableElement"  -> renderRecursiveStructure()
+      benchmark "15 RecycleableElement" -> renderRecursiveStructure 3
 
-    benchmark "7 RecycleableElement" ->
-      renderRecursiveStructure()
+    treeFactory: ->
+      benchmark "1 RecycleableElement"  -> TestElement()
+      benchmark "7 RecycleableElement"  -> renderRecursiveStructureFactory()
+      benchmark "15 RecycleableElement" -> renderRecursiveStructureFactory 3
 
-    benchmark "15 RecycleableElement" ->
-      renderRecursiveStructure 3
+  recycled:
+    new: ->
+      benchmark "1 RecycleableElement"  -> newRe().recycle()
+      benchmark "7 RecycleableElement"  -> renderRecursiveStructure().recycle()
+      benchmark "15 RecycleableElement" -> renderRecursiveStructure(3).recycle()
 
-  recycled: ->
-    benchmark "1 RecycleableElement" ->
-      newRe()
-      .recycle()
-
-    benchmark "7 RecycleableElement" ->
-      renderRecursiveStructure()
-      .recycle()
-
-    benchmark "15 RecycleableElement" ->
-      renderRecursiveStructure 3
-      .recycle()
-
-  normalTreeFactory: ->
-    benchmark "1 RecycleableElement" ->
-      TestElement()
-
-    benchmark "7 RecycleableElement" ->
-      renderRecursiveStructureFactory()
-
-    benchmark "15 RecycleableElement" -> renderRecursiveStructureFactory 3
-
-  recycledTreeFactory: ->
-    benchmark "1 RecycleableElement" ->
-      TestElement()
-      .recycle()
-
-    benchmark "7 RecycleableElement" ->
-      renderRecursiveStructureFactory()
-      .recycle()
-
-    benchmark "15 RecycleableElementA" -> renderRecursiveStructureFactory(3).recycle()
-    benchmark "15 RecycleableElementB" -> renderRecursiveStructureFactory(3).recycle()
-    benchmark "15 RecycleableElementC" -> renderRecursiveStructureFactory(3).recycle()
+    treeFactory: ->
+      benchmark "1 RecycleableElement"  -> TestElement().recycle()
+      benchmark "7 RecycleableElement"  -> renderRecursiveStructureFactory().recycle()
+      benchmark "15 RecycleableElement" -> renderRecursiveStructureFactory(3).recycle()
+      # benchmark "15 RecycleableElementB" -> renderRecursiveStructureFactory(3).recycle()
+      # benchmark "15 RecycleableElementC" -> renderRecursiveStructureFactory(3).recycle()

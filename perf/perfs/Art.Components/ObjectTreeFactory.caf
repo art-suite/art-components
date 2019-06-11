@@ -67,7 +67,8 @@ class ObjectTreeFactory
       name
       inspectedName = name
       bind as bindList
-      class as klass
+
+    klass ?= options?.class
 
     nodeFactory ?= if true
       log.warn "DEPRICATED: either 'nodeFactory' or 'class' is now required" unless klass?
@@ -82,57 +83,9 @@ class ObjectTreeFactory
       klass
       bindList
 
-  ### createObjectTreeFactories
-    IN: <in any order, any arbitrary array nesting - i.e. it uses a TreeFactory itself!>
-      options: all plain-objects are merged into 'options'
-        passed to createObjectTreeFactory (see above)
-
-      strings: all strings are parsed into words and concatinated into the factory-names list
-        used as the nodeTypeName to create a Tree-factory
-
-      function: zero or one function
-        nodeFactory: (nodeTypeName, props, children) -> node
-        OR
-        nodeFactoryFactory: (nodeTypeName) -> (props, children) -> node
-
-    OUT:
-      map from nodeNames (upperCamelCased) to the factories returned from createObjectTreeFactory
-
-    TODO:
-      PERFORMANCE TEST:
-        createObjectTreeFactoriesFromFactories
-        vs
-        createObjectTreeFactoriesFromFactoryFactories
-
-        The latter is probably faster. It is also more powerful and generally cleaner.
-  @createObjectTreeFactories: null # defined below
-
   ########################
   # PRIVATE
   ########################
-
-  @_createObjectTreeFactoriesFromFactories: (options, list, nodeFactory) =>
-    suffix = options.suffix || ''
-
-    out = {}
-    each nodeTypeName in list
-      do (nodeTypeName) =>
-        options.inspectedName = nodeTypeName
-        out[upperCamelCase(nodeTypeName) + suffix] = @createObjectTreeFactory options,
-          (props, children) -> nodeFactory nodeTypeName, props, children
-    out
-
-  @_createObjectTreeFactoriesFromFactoryFactories: (options, list, nodeFactoryFactory) =>
-    suffix = options.suffix || ''
-
-    out = {}
-    each nodeTypeName in list
-      nodeFactory = nodeFactoryFactory nodeTypeName
-      name = upperCamelCase(nodeTypeName) + suffix
-      options.inspectedName = name
-      out[name] = @createObjectTreeFactory options, nodeFactory
-    out
-
   @_createFactory: (nodeFactory, preprocessElement, mergePropsInto)->
     mergePropsInto    ?= mergeIntoBasic
     preprocessElement ?= preprocessElementBasic
@@ -197,6 +150,31 @@ class ObjectTreeFactory
 
     Factory
 
+  ### createObjectTreeFactories
+    IN: <in any order, any arbitrary array nesting - i.e. it uses a TreeFactory itself!>
+      options: all plain-objects are merged into 'options'
+        passed to createObjectTreeFactory (see above)
+
+      strings: all strings are parsed into words and concatinated into the factory-names list
+        used as the nodeTypeName to create a Tree-factory
+
+      function: zero or one function
+        nodeFactory: (nodeTypeName, props, children) -> node
+        OR
+        nodeFactoryFactory: (nodeTypeName) -> (props, children) -> node
+
+    OUT:
+      map from nodeNames (upperCamelCased) to the factories returned from createObjectTreeFactory
+
+    TODO:
+      PERFORMANCE TEST:
+        createObjectTreeFactoriesFromFactories
+        vs
+        createObjectTreeFactoriesFromFactoryFactories
+
+        The latter is probably faster. It is also more powerful and generally cleaner.
+  # @createObjectTreeFactories: null # defined below
+
   ###############################
    DOGFOOD
   ###############################
@@ -216,3 +194,28 @@ class ObjectTreeFactory
             @_createObjectTreeFactoriesFromFactoryFactories props, props.names, nodeFactory
       else  @_createObjectTreeFactoriesFromFactories        props, props.names, nodeFactory
 
+  ########################
+  # PRIVATE
+  ########################
+
+  @_createObjectTreeFactoriesFromFactories: (options, list, nodeFactory) =>
+    suffix = options.suffix || ''
+
+    out = {}
+    each nodeTypeName in list
+      do (nodeTypeName) =>
+        options.inspectedName = nodeTypeName
+        out[upperCamelCase(nodeTypeName) + suffix] = @createObjectTreeFactory options,
+          (props, children) -> nodeFactory nodeTypeName, props, children
+    out
+
+  @_createObjectTreeFactoriesFromFactoryFactories: (options, list, nodeFactoryFactory) =>
+    suffix = options.suffix || ''
+
+    out = {}
+    each nodeTypeName in list
+      nodeFactory = nodeFactoryFactory nodeTypeName
+      name = upperCamelCase(nodeTypeName) + suffix
+      options.inspectedName = name
+      out[name] = @createObjectTreeFactory options, nodeFactory
+    out
