@@ -9,12 +9,10 @@ class VirtualElementPool extends BaseClass
 
   checkout: (elementClassName, props, children) ->
     if @_pool.length > 0
-      # log "VirtualElementPool reuse: #{peek(@_pool).inspectedNameAndId}"
       @_pool.pop().init         elementClassName, props, children
+
     else
-      out = new @virtualElementClass elementClassName, props, children
-      # log "VirtualElementPool new: #{out.inspectedNameAndId}"
-      out
+      new @virtualElementClass elementClassName, props, children
 
   checkin: (virtualElement) ->
     @_pool.push virtualElement
