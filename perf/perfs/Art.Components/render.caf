@@ -38,13 +38,13 @@ suite:
         renderRecursiveStructure()
         .release()
 
-  baseline: ->
-    a = 1
-    benchmark
-      "count"
-      -> a++
+  # baseline: ->
+  #   a = 1
+  #   benchmark
+  #     "count"
+  #     -> a++
 
-    test "count result" -> log count: a
+  #   test "count result" -> log count: a
 
   simulatedRenders:
 
@@ -54,20 +54,20 @@ suite:
         "simulated render 1 element"
         ->
           TestElementR()
-        warmUpDuration: 2
+        # warmUpDuration: 2
 
       benchmark
         "simulated render 7 element structures"
         ->
           renderRecursiveStructure()
-        warmUpDuration: 2
+        # warmUpDuration: 2
 
       benchmark
         "simulated render 15 element structures"
         ->
           renderRecursiveStructure 3
         # duration: 2
-        warmUpDuration: 2
+        # warmUpDuration: 2
 
     withRelease: ->
       @timeout 10000
@@ -76,7 +76,7 @@ suite:
         ->
           TestElementR()
           .release()
-        warmUpDuration: 2
+        # warmUpDuration: 2
 
 
       benchmark
@@ -84,7 +84,7 @@ suite:
         ->
           renderRecursiveStructure()
           .release()
-        warmUpDuration: 2
+        # warmUpDuration: 2
 
       benchmark
         "simulated render 15 element structures"
@@ -92,7 +92,7 @@ suite:
           renderRecursiveStructure 3
           .release()
         # duration: 2
-        warmUpDuration: 2
+        # warmUpDuration: 2
 
 
     # withoutRelease2: ->

@@ -1,0 +1,213 @@
+import &StandardImport, &ArtEpochedState, {} &Counters
+
+
+emptyState = {}
+
+(baseClass) -> class EpochedStateMixin extends &StateFieldsMixin baseClass
+
+  @_emptyState = {}
+
+  constructor: ->
+    @state = emptyState
+    @_wasInstantiated = false
+
+  ##################
+    CLIENT-API
+  ##################
+  ### setState
+    signatures:
+      # update zero or more states via an plain object mapping keys to values;
+      (newStateMapObject) ->
+        sets state from each k-v pair in newStateMapObject
+
+      # transform state during the enxt state-update epoch
+      (stateUpdateFunction) ->
+        during the next state-update-epoch, this function
+        is applied to the state.
+
+      # update one state-value (faster than creating an object just to update state)
+      (stateKey, stateValue) ->
+        set one state
+
+    OUT: self
+
+    stateUpdateFunction: (nextState) -> nextState
+      Takes a nextState-object as input and returns a new
+      nextState object or passes nextState directly through.
+      EFFECT: can call setState; CANNOT modify nextState
+  setState: (a, b) ->
+    if isString a
+      @_setSingleState a, b
+
+    else if newState = a
+      if isFunction newState
+        @_queueUpdate newState
+
+      else
+        testState = @state
+        _state = null
+        each v, k in-object newState when @_pendingState || testState[k] != v
+          _state ?= @_getStateToSet()
+          _state[k] = v
+
+      @
+
+  onNextReady: (f, forceEpoch = true) ->
+    @getEpoch().onNextReady f, forceEpoch, @
+
+  ### preprocessState
+    When:         preprocessState is called:
+                    after preprocessProps
+                    after componentWillUpdate
+                    before rendering
+
+    IN:           newState <Object> - the state which is proposed to become @state
+                  isInitialState <Boolean> - true if first call, else false
+
+                  DO NOT MUTATE newState!
+
+    OUT:          object which will become @state. Can be newState, be based on newState or completely new.
+
+    Guarantees:   @state will allways be passed through preprocessState before it is set.
+                  i.e. Your render code will never see a @state that hasen't been preprocessed.
+
+  preprocessState: defaultPreprocessState = (newState) -> newState
+
+  ##################
+    OVERRIDES
+  ##################
+  _autoEpoch = null
+  ## epoch getter
+    Override this with your libraries own epoch if you
+    want full control. ArtComponents an ArtModels do= this.
+  @getter epoch: -> _autoEpoch ?= new Epoch
+
+  #######################
+    PRIVATE
+  #######################
+
+  _instantiateState: ->
+    stateAfterPossibleSetState = @state
+
+    stateFields = @getStateFields()
+    @class extract emptyStateFields
+    haveStateFields       = stateFields                 != emptyStateFields
+    haveStateFromSetState = stateAfterPossibleSetState  != emptyState
+
+    @state = emptyState # @preprocessState is allowed to inspect @state
+    @state = @_preprocessState
+      switch
+        when haveStateFields && haveStateFromSetState
+          merge stateFields, stateAfterPossibleSetState
+        when haveStateFields        then stateFields
+        when haveStateFromSetState  then stateAfterPossibleSetState
+        else emptyState
+
+      true
+
+    @_wasInstantiated = true
+
+  ## _applyPendingState
+    NOTES:
+      - newProps is non-null if this component is being updated from a non-instantiated Component.
+      - This is where @props gets set for any update, but not where it gets set for component initializiation.
+
+    NOTE: User-overridable @componentWillReceiveProps is allowed to call @setState.
+      @componentWillReceiveProps is DEPRICATED. use @preprocessProps
+
+    NOTE: Any updates state-changes triggered in @componentDidUpdate will be delayed until next epoch
+      @componentDidUpdate is DEPRICATED. use @render, check if not-first render; if you care
+  _applyPendingState: (newProps) ->
+    return unless @_epochUpdateQueued || newProps
+
+    Counters.componentUpdated()
+
+    @_epochUpdateQueued = false
+
+    oldProps = @props
+    oldState = @state
+
+    if newProps
+      @props = @_preprocessProps
+        @_rawProps = newProps
+        false
+
+    @state = @_preprocessState
+      @_resolvePendingStateUpdates()
+      false
+
+    @_reRenderAndUpdateComponent()
+
+
+  _preprocessState: (state, firstCall) ->
+    return state if defaultPreprocessState == @preprocessState
+    try @preprocessState state, firstCall
+    catch error
+      @_logLifeCycleError error
+      state
+
+
+  _getStateToSet: ->
+    if @_wasInstantiated then @_getPendingState()
+    else
+      @state = {} if @state == emptyState
+      @state
+
+  _setSingleState: (stateKey, stateValue, callback) ->
+    if @_pendingState || @state[stateKey] != stateValue
+      @_getStateToSet()[stateKey] = stateValue
+
+    stateValue
+
+  _queueRerender: ->
+    @_getPendingState()
+
+  _setPendingState: (pendingState) ->
+    @_queueChangingComponentUpdates()
+    @_pendingState = pendingState
+
+  _queueChangingComponentUpdates: ->
+    unless @_epochUpdateQueued
+      @_epochUpdateQueued = true
+      @getEpoch().queueItem @
+
+  _queueUpdate: (updateFunction) ->
+    @_queueChangingComponentUpdates()
+    (@_pendingUpdates ?= []).push updateFunction
+
+  _getPendingState: ->
+    @_pendingState || @_setPendingState {}
+
+
+  ## _resolvePendingStateUpdates
+    Clears out @_pendingUpdates and @_pendingState, applying them all to 'state' as passed-in.
+
+    NOTE:
+      This is a noop if @_pendingUpdates and @_pendingState are null.
+      OldState is returned without any work done.
+
+    ASSUMPTIONS:
+      if @_pendingState is set, it is an object we are allowed to mutate
+        It will be mutated and be the return-value of this function.
+
+    EFFECTS:
+      oldState is NOT modified
+      @_pendingState and @_pendingUpdates are null and have been applied to oldState
+
+    OUT: state is returned as-is unless @_pendingState or @_pendingUpdates is set
+  _resolvePendingStateUpdates: ->
+    oldState = @state
+
+    if newState = @_pendingState
+      object v, k from-object oldState into newState when newState[k] == undefined
+      @_pendingState = null
+
+    if @_pendingUpdates
+      newState ?= merge oldState
+
+      each updateFunction in-array @_pendingUpdates
+        newState = updateFunction.call @, newState
+
+      @_pendingUpdates = null
+
+    newState ? oldState

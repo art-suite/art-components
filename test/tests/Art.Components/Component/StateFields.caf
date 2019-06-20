@@ -96,10 +96,10 @@ suite: ->
       render: -> TestElement()
 
     c = MyComponent1()
-    assert.doesNotExist c.state
+    assert.eq {}, c.state
     assert.eq c._instantiate().state, foo: "foo", bar: "bar"
 
     c = MyComponent2()
-    assert.doesNotExist c.state
+    assert.eq {}, c.state
     assert.eq c._instantiate().state, foo: "foo", baz: "baz"
 

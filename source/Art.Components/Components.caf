@@ -1,4 +1,4 @@
-import &StandardImport, &ComponentEpoch, {} &Component
+import &StandardImport, {} &Component
 
 getMergedTextPropValue = (oldValue, v) ->
   if oldValue?
@@ -9,4 +9,3 @@ getMergedTextPropValue = (oldValue, v) ->
 
 []
   [] Component, :createAndInstantiateTopComponent :createComponentFactory
-  onNextReady: (callback) -> componentEpoch.onNextReady callback

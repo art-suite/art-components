@@ -1,6 +1,5 @@
 import &StandardImport, &ArtObjectTreeFactory, &Helpers, {} &Counters, &VirtualNode
 
-&ComponentEpoch extract componentEpoch
 getEnv() extract artComponentsDebug
 
 devMode = &DevMode
@@ -10,7 +9,7 @@ if ArtEngineCore = Neptune.Art.Engine?.Core
 
 emptyProps = {}
 
-class Component extends &StateFieldsMixin &InstanceFunctionBindingMixin VirtualNode
+class Component extends &EpochedStateMixin &InstanceFunctionBindingMixin VirtualNode
   @abstractClass()
 
   @nonBindingFunctions:
@@ -29,6 +28,12 @@ class Component extends &StateFieldsMixin &InstanceFunctionBindingMixin VirtualN
     createObjectTreeFactory
       objectTreeFactoryOptions
       @
+
+  ###############################
+    EpochedStateMixin Overrides
+  ###############################
+  &ComponentEpoch extract componentEpoch
+  @getter epoch: -> componentEpoch
 
   #########################
   # HOT RELOAD SUPPORT
@@ -72,15 +77,12 @@ class Component extends &StateFieldsMixin &InstanceFunctionBindingMixin VirtualN
       @_renderedIn?._componentDepth ? 0
       + 1
 
-    @state =
-
     @_refs =
     @_pendingState =
     @_pendingUpdates =
     @_virtualSubtree = null
 
     @_mounted =
-    @_wasMounted =
     @_epochUpdateQueued = false
 
   clone: ->
@@ -199,14 +201,7 @@ class Component extends &StateFieldsMixin &InstanceFunctionBindingMixin VirtualN
     propFields declaration
   ##############################
   @extendableProperty
-    propFields: null
-
-    # custom extender here only so propFiles can be initialized to null, not {}.
-    # This is a performance optimization, but I'm dubious about if it does anything.
-    # Need a concrete perf test to be sure, but I think we can just simplified all this down to propFields: {}
-    # SBD (2018-Feb)
-    extend: (extendedValue, addPropFields) ->
-      mergeInto extendedValue ? {}, addPropFields
+    propFields: emptyPropFields = {}
 
   ### @propFields
     Declare prop fields you intend to use.
@@ -229,49 +224,6 @@ class Component extends &StateFieldsMixin &InstanceFunctionBindingMixin VirtualN
 
   # ALIAS
   @propField: propFields
-
-
-  ################################################
-  # Component API (based loosly on Facebook.React)
-  ################################################
-  ### setState
-    signatures:
-      # update zero or more states via an plain object mapping keys to values;
-      (newStateMapObject) ->
-        sets state from each k-v pair in newStateMapObject
-
-      # transform state during the enxt state-update epoch
-      (stateUpdateFunction) ->
-        during the next state-update-epoch, this function
-        is applied to the state.
-
-      # update one state-value (faster than creating an object just to update state)
-      (stateKey, stateValue) ->
-        set one state
-
-    OUT: self
-
-    stateUpdateFunction: (nextState) -> nextState
-      Takes a nextState-object as input and returns a new
-      nextState object or passes nextState directly through.
-      EFFECT: can call setState; CANNOT modify nextState
-
-  setState: (a, b) ->
-    if isString a
-      @_setSingleState a, b
-
-    else if newState = a
-      if isFunction newState
-        @_queueUpdate newState
-
-      else
-        testState = @state
-        _state = null
-        each v, k in-object newState when @_pendingState || testState[k] != v
-          _state ?= @_getStateToSet()
-          _state[k] = v
-
-      @
 
   ################################################
   # Component LifeCycle
@@ -322,36 +274,6 @@ class Component extends &StateFieldsMixin &InstanceFunctionBindingMixin VirtualN
   ###
   preprocessProps: defaultPreprocessProps = (newProps) -> newProps
 
-  ### preprocessState
-    When:         preprocessState is called:
-                    after preprocessProps
-                    after componentWillUpdate
-                    before rendering
-
-    IN:           newState <Object> - the state which is proposed to become @state
-                  isInitialState <Boolean> - true if first call, else false
-    OUT:          object which will become @state. Can be newState, be based on newState or completely new.
-
-    Guarantees:   @state will allways be passed through preprocessState before it is set.
-                  i.e. Your render code will never see a @state that hasen't been preprocessed.
-
-    NOTES RE Facebook.React:
-      Why add this? Well, often you want to apply a transformation to @state whenever it is initialized
-      OR it changes. With Facebook.React there is no one lifecycle place for this. Component
-      instantiation/mounting and component updating are kept separate. I have found it is very
-      error-prone to implement this common functionality manually on each component that needs it.
-
-      An example of this is FluxComponents. They alter state implicitly as the subscription data comes in, and
-      and component instantiation. preprocessState makes it easy to transform any data written via FluxComponents
-      into a standard form.
-
-    SBD NOTES TO SELF:
-      I think:
-        - it is OK to directly mutate newState, can we declare this offically part of the API?
-        - calls to @setState in preprocessState will be applied NEXT epoch.
-  ###
-  preprocessState: defaultPreprocessState = (newState) -> newState
-
   ### componentWillMount
     Invoked once, immediately before the initial rendering occurs.
     ALLOWED: setState
@@ -367,8 +289,11 @@ class Component extends &StateFieldsMixin &InstanceFunctionBindingMixin VirtualN
     Called each time webpack hot-reloads a module.
     It is important that this change the components state to trigger a rerender.
   componentDidHotReload: ->
-    count = (@state._hotModuleReloadCount || 0) + 1
-    @setState _hotModuleReloadCount: count
+    @setState
+      :_hotModuleReloadCount
+      @state._hotModuleReloadCount
+      ? 0
+      + 1
 
   ######################
   # PRIVATE
@@ -382,102 +307,6 @@ class Component extends &StateFieldsMixin &InstanceFunctionBindingMixin VirtualN
         child._captureRefs component
 
     @
-
-  _getStateToSet: ->
-    if @_wasMounted then @_getPendingState()
-    else
-      @state = {} if @state == emptyState
-      @state
-
-  _setSingleState: (stateKey, stateValue, callback) ->
-    if @_pendingState || @state[stateKey] != stateValue
-      @_getStateToSet()[stateKey] = stateValue
-
-    stateValue
-
-  _queueRerender: ->
-    @_getPendingState()
-
-  ### _setPendingState
-    2016-12: I can't decide! Should we allow state updates on unmounted components or not?!?!
-    RELVANCE: allowing state updates allows us to update animating-out Art.Engine Elements.
-    This is useful, for example, to hide the TextInput Dom element
-
-    I'm generally against updating unmounted components:
-      - they don't get new props. Logically, since they are unmounted,
-        they should have no props, yet they do. They would surely
-        completely break if we set @props = {}.
-
-      - Since they don't get new @props, there is no way for the parent-before-unmounting
-        to control unmounted Components. If their state can change, their parent-before
-        should have some control.
-
-    BUT, we need a better answer for animating-out Components. There is a need for re-rendering them
-    at the beginning and ending of their animating-out process.
-
-    Animating-Out
-      - Most things can probably be handled by 1 render just before animating-out starts. This
-        is awkward to do manually: First render decides we are going to remove a sub-component, but
-        doesn't - during that render - instead it tells that component it is about to be animated-out.
-        Then, it queues another render where it actually removes the sub-component. And this must all
-        be managed by the parent Component, when really it's 100% the child-component's concern.
-
-      - What if a Component can request a "final render" just BEFORE it is unmounted? The parent Component's
-        render runs, removing the child Component. Then ArtComponents detects the child needs unmounting, but just
-        before it unmounts it, the child gets a re-render as-if it's props changed, though they didn't. This
-        in turn will update any Element or child Components for their animating-out state. After that,
-        the component will get no more renders - since it will then be unmounted and unmounted components don't
-        get rendered.
-
-      - Further, when we do this final render, we can signal it is "final" via @props.
-        - have the component get a final-render notification (via a member function override).
-          That function takes as inputs the last-good @props, and returns the final-render @props.
-          If it returns null, there will be no final render. This is the default implementation.
-
-        - I LIKE!
-
-      - Conclusion: New Component override: (TODO - I think we should go for this solution!)
-
-          finalRenderProps: (previousProps) -> null
-
-        To request a final-render, all you need to do is add this to your Component:
-
-          finalRenderProps: (previousProps) -> previousProps
-
-        And you may find it handy to also do:
-
-          finalRenderProps: (previousProps) -> merge previousProps, finalRender: true
-
-        Then you can do something special for your final-render:
-
-          render: ->
-            {finalRender} = @props
-
-            if finalRender ...
-
-    DO WE NEED SOMETHING MORE POWERFUL?
-
-      - Do we need more than 1 "final render" - during animating-out?
-      - Do we need an animating-out-done render?
-      - A general solution would be a "manual unmount" option. I don't love this, but
-        I also don't love tying this explicitly to ArtEngine's animating-out features.
-
-    To ENABLE updates on unmounted Components, remove: || !@_mounted
-  _setPendingState: (pendingState) ->
-    @_queueChangingComponentUpdates()
-    @_pendingState = pendingState
-
-  _queueChangingComponentUpdates: ->
-    unless @_epochUpdateQueued
-      @_epochUpdateQueued = true
-      componentEpoch.addChangingComponent @
-
-  _queueUpdate: (updateFunction) ->
-    @_queueChangingComponentUpdates()
-    (@_pendingUpdates ?= []).push updateFunction
-
-  _getPendingState: ->
-    @_pendingState || @_setPendingState {}
 
   _unmount: ->
     @_removeHotInstance()
@@ -498,7 +327,7 @@ class Component extends &StateFieldsMixin &InstanceFunctionBindingMixin VirtualN
 
   ## _instantiate
     OUT: this
-  emptyState = {}
+  emptyState = @_emptyState
   _instantiate: (parentComponent, parentVirtualNode) ->
     if parentComponent != @_renderedIn && parentComponent? && @_renderedIn?
       return @clone()._instantiate parentComponent, parentVirtualNode
@@ -510,32 +339,14 @@ class Component extends &StateFieldsMixin &InstanceFunctionBindingMixin VirtualN
     @bindFunctionsToInstance()
     @_addHotInstance()
 
-    @state ?= emptyState
-
     @props = @_preprocessProps @props, true
     @_componentWillMount()
 
-    stateAfterPossibleSetState = @state
-
-    stateFields = @getStateFields()
-    @class extract emptyStateFields
-    haveStateFields       = stateFields != emptyStateFields
-    haveStateFromSetState = stateAfterPossibleSetState != emptyState
-
-    @state = emptyState # @preprocessState is allowed to inspect @state
-    @state = @_preprocessState
-      switch
-        when haveStateFields && haveStateFromSetState
-          merge stateFields, stateAfterPossibleSetState
-        when haveStateFields        then stateFields
-        when haveStateFromSetState  then stateAfterPossibleSetState
-        else emptyState
-
-      true
+    @_instantiateState()
 
     @_instantiateVirtualSubtree()
 
-    @_wasMounted = @_mounted = true
+    @_mounted = true
     @
 
   _instantiateVirtualSubtree: ->
@@ -638,70 +449,6 @@ class Component extends &StateFieldsMixin &InstanceFunctionBindingMixin VirtualN
 
     @
 
-  ## _resolvePendingStateUpdates
-    Clears out @_pendingUpdates and @_pendingState, applying them all to 'state' as passed-in.
-
-    NOTE:
-      This is a noop if @_pendingUpdates and @_pendingState are null.
-      OldState is returned without any work done.
-
-    ASSUMPTIONS:
-      if @_pendingState is set, it is an object we are allowed to mutate
-        It will be mutated and be the return-value of this function.
-
-    EFFECTS:
-      oldState is NOT modified
-      @_pendingState and @_pendingUpdates are null and have been applied to oldState
-
-    OUT: state is returned as-is unless @_pendingState or @_pendingUpdates is set
-  _resolvePendingStateUpdates: ->
-    oldState = @state
-
-    if newState = @_pendingState
-      object v, k from-object oldState into newState when newState[k] == undefined
-      @_pendingState = null
-
-    if @_pendingUpdates
-      newState ?= merge oldState
-
-      each updateFunction in-array @_pendingUpdates
-        newState = updateFunction.call @, newState
-
-      @_pendingUpdates = null
-
-    newState ? oldState
-
-  ## _applyPendingState
-    NOTES:
-      - newProps is non-null if this component is being updated from a non-instantiated Component.
-      - This is where @props gets set for any update, but not where it gets set for component initializiation.
-
-    NOTE: User-overridable @componentWillReceiveProps is allowed to call @setState.
-      @componentWillReceiveProps is DEPRICATED. use @preprocessProps
-
-    NOTE: Any updates state-changes triggered in @componentDidUpdate will be delayed until next epoch
-      @componentDidUpdate is DEPRICATED. use @render, check if not-first render; if you care
-  _applyPendingState: (newProps) ->
-    return unless @_epochUpdateQueued || newProps
-
-    Counters.componentUpdated()
-
-    @_epochUpdateQueued = false
-
-    oldProps = @props
-    oldState = @state
-
-    if newProps
-      @props = @_preprocessProps
-        @_rawProps = newProps
-        false
-
-    @state = @_preprocessState
-      @_resolvePendingStateUpdates()
-      false
-
-    @_reRenderAndUpdateComponent()
-
 
   ### _updateComponent
     IN:
@@ -734,7 +481,7 @@ class Component extends &StateFieldsMixin &InstanceFunctionBindingMixin VirtualN
     2019: Better - let's make these lifecycle functions @extendableProperties
 
   _preprocessProps: (props, firstCall) ->
-    if propFields = @getPropFields()
+    if emptyPropFields != propFields = @getPropFields()
       merge propFields, props
     else props
 
@@ -744,13 +491,6 @@ class Component extends &StateFieldsMixin &InstanceFunctionBindingMixin VirtualN
     catch error
       @_logLifeCycleError error
       props
-
-  _preprocessState: (state, firstCall) ->
-    return state if defaultPreprocessState == @preprocessState
-    try @preprocessState state, firstCall
-    catch error
-      @_logLifeCycleError error
-      state
 
   _componentDidHotReload: ->
     @bindFunctionsToInstance true

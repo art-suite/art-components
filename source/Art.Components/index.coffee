@@ -9,6 +9,7 @@ module.exports
   ComponentEpoch:               require './ComponentEpoch'              
   Counters:                     require './Counters'                    
   DevMode:                      require './DevMode'                     
+  EpochedStateMixin:            require './EpochedStateMixin'           
   Helpers:                      require './Helpers'                     
   InstanceFunctionBindingMixin: require './InstanceFunctionBindingMixin'
   RecyclableVirtualElement:     require './RecyclableVirtualElement'    
