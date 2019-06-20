@@ -468,24 +468,6 @@ class Component extends &EpochedStateMixin &InstanceFunctionBindingMixin Virtual
 
     @
 
-
-  ### _updateComponent
-    IN:
-      newProps: if set, replaces props
-      newState:
-
-    NOTE: @componentWillUpdate
-      @componetWillUpdate is DEPRICATED - use preprocessState
-      User-overridable @componentWillUpdate is allowed to call @setState.
-      Any updates state-changes triggered in @componentWillUpdate will be applied immediately
-      after @componetWillUpdate completes. The newState object passed to @componetWillUpdate is
-      not modified.
-
-    NOTE: @preprocessState
-      User-overridable @preprocessState is allowed to call @setState.
-      Any updates state-changes triggered in @preprocessState will be delayed until next epoch
-      @_preprocessState assumes @props has already been updated
-
   ########################
   # PRIVATE
   # LifeCycle Management
@@ -497,10 +479,6 @@ class Component extends &EpochedStateMixin &InstanceFunctionBindingMixin Virtual
   ###
     NOTE: The reason for defaultComponent* values instead of making the defaults NULL
       is so inheritors can call "super" safely.
-    IDEA: We could make createComponentFactory gather up all custom life-cycle functions,
-      and execute each in sequence therefor they don't need to call super.
-      We could also enable mixins this way.
-    2019: Better - let's make these lifecycle functions @extendableProperties
 
   _preprocessProps: (props, firstCall) ->
     if emptyPropFields != propFields = @getPropFields()
@@ -536,3 +514,4 @@ class Component extends &EpochedStateMixin &InstanceFunctionBindingMixin Virtual
 
   _logLifeCycleError: (error) ->
     log.error ArtComponents_lifeCycle: {} error, Component: @
+    null

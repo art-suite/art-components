@@ -1,20 +1,37 @@
 import &StandardImport
 
 suite: ->
-  chainedTest ->
+  test :setState ->
     class MyEpochedState extends EpochedStateMixin BaseClass
 
       constructor: ->
         @_instantiateState()
 
-    new MyEpochedState
+    myEpochedState = new MyEpochedState
 
-  .tapTest
-    :setState (myEpochedState)->
-      assert.doesNotExist myEpochedState.state.foo
-      myEpochedState.setState foo: 123
-      assert.doesNotExist myEpochedState.state.foo
-      myEpochedState.onNextReady ->
-        assert.selectedEq
-          foo: 123
-          myEpochedState.state
+    assert.doesNotExist myEpochedState.state.foo
+    myEpochedState.setState foo: 123
+    assert.doesNotExist myEpochedState.state.foo
+    myEpochedState.onNextReady ->
+      assert.selectedEq
+        foo: 123
+        myEpochedState.state
+
+  test "setState before instantiate" ->
+    class MyEpochedState extends EpochedStateMixin BaseClass
+
+    myEpochedState = new MyEpochedState
+
+    assert.doesNotExist myEpochedState.state.foo
+    myEpochedState.setState foo: 123
+
+    assert.selectedEq
+      foo: 123
+      myEpochedState.state
+
+    myEpochedState._instantiateState()
+
+    myEpochedState.onNextReady ->
+      assert.selectedEq
+        foo: 123
+        myEpochedState.state

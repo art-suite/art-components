@@ -115,14 +115,12 @@ emptyState = {}
 
     @_wasInstantiated = true
 
-
   _preprocessState: (state, firstCall) ->
     return state if defaultPreprocessState == @preprocessState
     try @preprocessState state, firstCall
     catch error
-      @_logLifeCycleError error
+      log.error [@class.name]: {} error, instance: @
       state
-
 
   _getStateToSet: ->
     if @_wasInstantiated then @_getPendingState()
@@ -151,7 +149,6 @@ emptyState = {}
   _queueUpdate: (updateFunction) ->
     @_queueChangingComponentUpdates()
     (@_pendingUpdates ?= []).push updateFunction
-
 
   ## _resolvePendingStateUpdates
     Clears out @_pendingUpdates and @_pendingState, applying them all to 'state' as passed-in.
