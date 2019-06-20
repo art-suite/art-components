@@ -10,6 +10,7 @@ emptyState = {}
   constructor: ->
     @state = emptyState
     @_wasInstantiated = false
+    @_epochUpdateQueued = false
 
   ##################
     CLIENT-API
@@ -82,6 +83,13 @@ emptyState = {}
     want full control. ArtComponents an ArtModels do= this.
   @getter epoch: -> _autoEpoch ?= new Epoch
 
+  processEpoch: ->
+    @state = @_preprocessState
+      @_resolvePendingStateUpdates()
+      false
+
+    @_epochUpdateQueued = false
+
   #######################
     PRIVATE
   #######################
@@ -107,37 +115,6 @@ emptyState = {}
 
     @_wasInstantiated = true
 
-  ## _applyPendingState
-    NOTES:
-      - newProps is non-null if this component is being updated from a non-instantiated Component.
-      - This is where @props gets set for any update, but not where it gets set for component initializiation.
-
-    NOTE: User-overridable @componentWillReceiveProps is allowed to call @setState.
-      @componentWillReceiveProps is DEPRICATED. use @preprocessProps
-
-    NOTE: Any updates state-changes triggered in @componentDidUpdate will be delayed until next epoch
-      @componentDidUpdate is DEPRICATED. use @render, check if not-first render; if you care
-  _applyPendingState: (newProps) ->
-    return unless @_epochUpdateQueued || newProps
-
-    Counters.componentUpdated()
-
-    @_epochUpdateQueued = false
-
-    oldProps = @props
-    oldState = @state
-
-    if newProps
-      @props = @_preprocessProps
-        @_rawProps = newProps
-        false
-
-    @state = @_preprocessState
-      @_resolvePendingStateUpdates()
-      false
-
-    @_reRenderAndUpdateComponent()
-
 
   _preprocessState: (state, firstCall) ->
     return state if defaultPreprocessState == @preprocessState
@@ -159,24 +136,21 @@ emptyState = {}
 
     stateValue
 
-  _queueRerender: ->
-    @_getPendingState()
-
-  _setPendingState: (pendingState) ->
-    @_queueChangingComponentUpdates()
-    @_pendingState = pendingState
-
   _queueChangingComponentUpdates: ->
     unless @_epochUpdateQueued
       @_epochUpdateQueued = true
       @getEpoch().queueItem @
 
+  _getPendingState: ->
+    @_pendingState || @_setPendingState {}
+
+  _setPendingState: (pendingState) ->
+    @_queueChangingComponentUpdates()
+    @_pendingState = pendingState
+
   _queueUpdate: (updateFunction) ->
     @_queueChangingComponentUpdates()
     (@_pendingUpdates ?= []).push updateFunction
-
-  _getPendingState: ->
-    @_pendingState || @_setPendingState {}
 
 
   ## _resolvePendingStateUpdates

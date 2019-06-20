@@ -11,6 +11,6 @@ class ComponentEpoch extends Epoch
       "" ComponentEpoch processEpochItems
       stackTime ->
         each component in-array changingComponents.sort testByComponentDepth
-          component._applyPendingState()
+          component.processEpoch()
 
         null

@@ -5,6 +5,7 @@ module.exports = require './namespace'
 module.exports
 .addModules
   Counters:                 require './Counters'                
+  EpochedStateMixin:        require './EpochedStateMixin'       
   PerfRegressions:          require './PerfRegressions'         
   RecyclableVirtualElement: require './RecyclableVirtualElement'
   StandardImport:           require './StandardImport'          

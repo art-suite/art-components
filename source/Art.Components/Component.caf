@@ -35,6 +35,26 @@ class Component extends &EpochedStateMixin &InstanceFunctionBindingMixin Virtual
   &ComponentEpoch extract componentEpoch
   @getter epoch: -> componentEpoch
 
+  ## processEpoch
+    NOTES:
+      - newProps is non-null if this component is being updated from a non-instantiated Component.
+      - This is where @props gets set for any update, but not where it gets set for component initializiation.
+  processEpoch: (newProps) ->
+    return unless @_epochUpdateQueued || newProps
+    Counters.componentUpdated()
+
+    oldProps = @props
+    oldState = @state
+
+    if newProps
+      @props = @_preprocessProps
+        @_rawProps = newProps
+        false
+
+    super()
+
+    @_reRenderAndUpdateComponent()
+
   #########################
   # HOT RELOAD SUPPORT
   #########################
@@ -82,8 +102,7 @@ class Component extends &EpochedStateMixin &InstanceFunctionBindingMixin Virtual
     @_pendingUpdates =
     @_virtualSubtree = null
 
-    @_mounted =
-    @_epochUpdateQueued = false
+    @_mounted = false
 
   clone: ->
     new @class @props
@@ -445,7 +464,7 @@ class Component extends &EpochedStateMixin &InstanceFunctionBindingMixin Virtual
     OUT: @
   _updateFrom: (componentInstance) ->
     if @_shouldReRenderComponent componentInstance
-      @_applyPendingState componentInstance.props
+      @processEpoch componentInstance.props
 
     @
 
@@ -471,6 +490,9 @@ class Component extends &EpochedStateMixin &InstanceFunctionBindingMixin Virtual
   # PRIVATE
   # LifeCycle Management
   ########################
+
+  _queueRerender: ->
+    @_getPendingState()
 
   ###
     NOTE: The reason for defaultComponent* values instead of making the defaults NULL
