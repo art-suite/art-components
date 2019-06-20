@@ -93,6 +93,9 @@
     To ENABLE updates on unmounted Components, remove: || !@_mounted
 
   ###
-    IDEA: let's make these lifecycle functions @extendableProperties
 
 ```
+
+## Ideas
+
+* let's make these lifecycle functions @extendableProperties
