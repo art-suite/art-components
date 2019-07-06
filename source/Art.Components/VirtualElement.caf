@@ -194,13 +194,22 @@ class VirtualElement extends VirtualNode
     oldProps = @props
 
     noChangeCount = 0
-    noChange = -> noChangeCount++
+    noChange      = -> noChangeCount++
 
-    # objectDiff: (o1, o2, added, removed, changed, nochange, eq = defaultEq, o2KeyCount) ->
-    newPropsLength = @setPropsLength objectDiff newProps, oldProps, addedOrChanged, removed, addedOrChanged, noChange, propsEq
+    newPropsLength = @setPropsLength
+      objectDiff
+        newProps
+        oldProps
+        addedOrChanged # added
+        removed
+        addedOrChanged # changed
+        noChange
+        propsEq
+        oldPropsLength
 
     if newPropsLength == noChangeCount && oldPropsLength == newPropsLength
       false
+
     else
       @props = @_rawProps = newProps
       true

@@ -100,8 +100,10 @@ class VirtualNode extends BaseClass
         throw new Error "VirtualNode child is not a VirtualNode.\ninvalid child: #{inspect child}\nparent: #{@inspectedName}"
     children
 
-  # return true if an existing prop changed
-  # return true unless v == newProps[k] # propsEq - seems to be more overhead than its worth
+  ##
+    OUT:
+      false IFF prop-count same && all props are propsEq
+      propsEq - is it more overhead than its worth?
   _propsChanged: (virtualNode) ->
     newProps = virtualNode.rawProps
     _propsLength = 0
@@ -112,7 +114,7 @@ class VirtualNode extends BaseClass
 
     @_propsLength = _propsLength
 
-    _propsLength != virtualNode.getPropsLength()
+    != virtualNode.getPropsLength()
 
   ## _updateFrom
     Post conditions:

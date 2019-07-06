@@ -434,7 +434,7 @@ class Component extends &EpochedStateMixin &InstanceFunctionBindingMixin Virtual
   ## _reportInvalidRenderResult
   _reportInvalidRenderResult: (newRenderResult) ->
     log.error
-      "" Art.Components Component Reneer Error: (render ignored)\n\n
+      "" Art.Components Component Render Error: (render ignored)\n\n
       + if newRenderResult instanceof VirtualNode
         """
           The render function's top-level Component/VirtualElement changed

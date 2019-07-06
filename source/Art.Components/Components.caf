@@ -1,11 +1,3 @@
 import &StandardImport, {} &Component
 
-getMergedTextPropValue = (oldValue, v) ->
-  if oldValue?
-    if isArray oldValue
-          oldValue.concat v
-    else  [] oldValue, v
-  else v
-
-[]
-  [] Component, :createAndInstantiateTopComponent :createComponentFactory
+{createAndInstantiateTopComponent, createComponentFactory} = Component
