@@ -1,0 +1,20 @@
+import &StandardImport
+
+class RootComponents
+
+  @rootComponents: []
+
+  @mountRootComponent: (component) =>
+    @rootComponents.push component
+    component._instantiate()
+
+  @unmountRootComponent: (component) =>
+    unless component in @rootComponents
+      throw new Error "not a root component!"
+
+    @rootComponents = arrayWithout @rootComponents, component
+    component._unmount()
+
+  @rerenderAllComponents: =>
+    each component in-array @rootComponents
+      component.rerenderAllComponents()

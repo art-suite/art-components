@@ -1,11 +1,9 @@
 import &StandardImport, &ArtObjectTreeFactory, &Helpers, {} &Counters, &VirtualNode
+&ComponentEpoch extract componentEpoch
 
 getEnv() extract artComponentsDebug
 
 devMode = &DevMode
-
-if ArtEngineCore = Neptune.Art.Engine?.Core
-  {globalEpochCycle} = ArtEngineCore.GlobalEpochCycle
 
 emptyProps = {}
 
@@ -17,10 +15,7 @@ class Component extends &EpochedStateMixin &InstanceFunctionBindingMixin Virtual
     :componentWillUnmount
     :render
 
-  @topComponentInstances: []
-  @rerenderAll: ->
-    each component in-array @topComponentInstances
-      component.rerenderAll()
+  @rerenderAllComponents: &RootComponents.rerenderAllComponents
 
   @toComponentFactory: ->
     &Helpers extract objectTreeFactoryOptions
@@ -32,7 +27,6 @@ class Component extends &EpochedStateMixin &InstanceFunctionBindingMixin Virtual
   ###############################
     EpochedStateMixin Overrides
   ###############################
-  &ComponentEpoch extract componentEpoch
   @getter epoch: -> componentEpoch
 
   ## processEpoch
@@ -117,22 +111,10 @@ class Component extends &EpochedStateMixin &InstanceFunctionBindingMixin Virtual
     OUT: promise.then (x) ->
   withElement: (f) -> @_virtualSubtree.withElement f
 
-  rerenderAll: ->
+  rerenderAllComponents: ->
     @_queueRerender()
-    @eachSubcomponent (component) -> component.rerenderAll()
+    @eachSubcomponent (component) -> component.rerenderAllComponents()
     null
-
-  # OUT: this
-  instantiateAsTopComponent: ->
-    Component.topComponentInstances.push @
-    @_instantiate()
-
-  unbindTopComponent: ->
-    unless 0 <= index = Component.topComponentInstances.indexOf @
-      throw new Error "not a top component!"
-
-    Component.topComponentInstances = arrayWithout Component.topComponentInstances, index
-    @_unmount()
 
   ######################
   # INSPECTION
@@ -376,7 +358,7 @@ class Component extends &EpochedStateMixin &InstanceFunctionBindingMixin Virtual
 
   _render: ->
     # <performance monitoring>
-    start = globalEpochCycle?.startTimePerformance()
+    startFrameTimer :acRender
     Counters.componentRendered()
 
     log "render component: #{@className}" if artComponentsDebug
@@ -394,9 +376,7 @@ class Component extends &EpochedStateMixin &InstanceFunctionBindingMixin Virtual
 
     VirtualNode.currentlyRendering = null
 
-    # <performance monitoring>
-    globalEpochCycle?.endTimePerformance "reactRender", start
-    # </performance monitoring>
+    endFrameTimer()
 
     rendered
 
@@ -409,6 +389,8 @@ class Component extends &EpochedStateMixin &InstanceFunctionBindingMixin Virtual
 
   # renders the component and updates the Virtual-AIM as needed.
   _reRenderAndUpdateComponent: ->
+
+    startFrameTimer :acUpdate
 
     unless @_virtualSubtree
       @_instantiateVirtualSubtree()
@@ -428,6 +410,8 @@ class Component extends &EpochedStateMixin &InstanceFunctionBindingMixin Virtual
         parentVirtualElement._updateConcreteChildren()
 
       else @_reportInvalidRenderResult newRenderResult
+
+    endFrameTimer()
 
     null
 

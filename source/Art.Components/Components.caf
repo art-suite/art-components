@@ -1,3 +1,7 @@
 import &StandardImport, {} &Component
 
-{createAndInstantiateTopComponent, createComponentFactory} = Component
+[]
+  {createAndInstantiateTopComponent, createComponentFactory} = Component
+  &Init
+  {mountRootComponent, unmountRootComponent,
+  rerenderAllComponents} = &RootComponents

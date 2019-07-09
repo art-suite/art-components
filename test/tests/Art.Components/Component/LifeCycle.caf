@@ -17,7 +17,7 @@ suite:
             resolve()
             TestElement name: "child"
 
-        MyComponent().instantiateAsTopComponent()
+        mountRootComponent MyComponent()
 
     test "componentWillUnmount nested inside VirtualTestElement", ->
       new Promise (resolve) ->
@@ -61,7 +61,7 @@ suite:
             rendered = true
             TestElement name: :child
 
-        wc = WrapperComponent().instantiateAsTopComponent()
+        wc = mountRootComponent WrapperComponent()
         .onNextReady ->
           wc.setState includeComponent: false
           wc.onNextReady()

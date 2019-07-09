@@ -1,0 +1,13 @@
+import &StandardImport, &RootComponents
+
+class Init
+
+  ## Init
+    For ArtEngine - call AFTER FullScreenApp.init options
+    IN: options:
+
+    OUT: <Component> the mounted component-instance
+  @init: (options) ->
+    Promise
+    .then -> mountRootComponent options.render()
+    .tapCatch (error) -> log.error "Art.Components.init: failed", error

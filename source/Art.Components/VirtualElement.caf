@@ -269,6 +269,7 @@ class VirtualElement extends VirtualNode
 
     super
     Counters.virtualElementInstantiated()
+    startFrameTimer :acCreate
 
     @_element = try
       @_newElement
@@ -285,6 +286,8 @@ class VirtualElement extends VirtualNode
         @props
 
       @_newErrorElement()
+
+    endFrameTimer()
 
     throw new Error "VirtualElement._instantiate: no @_element" unless @_element?
 
