@@ -6,7 +6,9 @@ target:
 
 npm:
   description: "" Art.Components
-  dependencies: {}
+  dependencies:
+    art-epoched-state: :*
+
   scripts:
     perf: "nn -s;mocha -u tdd perf/"
 
