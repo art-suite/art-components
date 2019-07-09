@@ -3,14 +3,9 @@ import &StandardImport, &ArtEpochedState
 class ComponentEpoch extends Epoch
   @singletonClass()
 
-  testByComponentDepth = (a, b) ->
+  compareComponentDepth = (a, b) ->
     a._componentDepth - b._componentDepth
 
   processEpochItems: (changingComponents)->
-    &ArtFoundation.globalCount
-      "" ComponentEpoch processEpochItems
-      stackTime ->
-        each component in-array changingComponents.sort testByComponentDepth
-          component.processEpoch()
-
-        null
+    each component in-array changingComponents.sort compareComponentDepth
+      component.processEpoch()

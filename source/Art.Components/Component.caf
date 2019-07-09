@@ -453,12 +453,8 @@ class Component extends &EpochedStateMixin &InstanceFunctionBindingMixin Virtual
     @
 
   ########################
-  # PRIVATE
-  # LifeCycle Management
+    PRIVATE - LifeCycle Management
   ########################
-
-  _queueRerender: ->
-    @_getPendingState()
 
   ###
     NOTE: The reason for defaultComponent* values instead of making the defaults NULL
@@ -499,3 +495,10 @@ class Component extends &EpochedStateMixin &InstanceFunctionBindingMixin Virtual
   _logLifeCycleError: (error) ->
     log.error ArtComponents_lifeCycle: {} error, Component: @
     null
+
+
+  #####################
+    PRIVATE
+  #####################
+  _queueRerender: ->
+    @_getPendingState()
