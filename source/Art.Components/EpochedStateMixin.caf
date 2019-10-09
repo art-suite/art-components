@@ -71,7 +71,6 @@ emptyState = {}
 
     Guarantees:   @state will allways be passed through preprocessState before it is set.
                   i.e. Your render code will never see a @state that hasen't been preprocessed.
-
   preprocessState: defaultPreprocessState = (newState) -> newState
 
   ##################
@@ -80,7 +79,7 @@ emptyState = {}
   _autoEpoch = null
   ## epoch getter
     Override this with your libraries own epoch if you
-    want full control. ArtComponents an ArtModels do= this.
+    want full control. ArtComponents and ArtModels do this.
   @getter epoch: -> _autoEpoch ?= new Epoch
 
   processEpoch: ->

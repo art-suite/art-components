@@ -14,16 +14,10 @@ class VirtualNode extends BaseClass
 
   _initVirtualNode: (props) ->
     @_resetVirtualNodeProps()
-    @_released        = false
-    @_renderedIn      = VirtualNode.currentlyRendering
-
-    @key = if props?
-      props.key
-    else
-      props = emptyObject
-      null
-
-    @props = @_rawProps = props
+    @_released          = false
+    @_renderedIn        = VirtualNode.currentlyRendering
+    @props = @_rawProps = props ?= emptyObject
+    @key                = props.key
 
   _resetVirtualNodeProps: ->
     @_released = true
@@ -39,19 +33,34 @@ class VirtualNode extends BaseClass
   _resetAllProps: ->
     @_resetVirtualNodeProps()
 
+  #####################
+  # INSPECTION
+  #####################
+  findFirstElement: (pattern, options) ->
+    found = @findElements pattern, options
+    found?[0]
+
   @getter
-    "rawProps reusable parentComponent renderedIn"
+    :rawProps
+    :reusable
+    :parentComponent
+    :renderedIn
     inspectedName:      -> "" VirtualNode<#{@key}>
     inspectedNameAndId: -> "" #{@inspectedName}-#{@uniqueId}
     inspectedPath:      -> @parentComponent?.inspectedPathName ? ""
     inspectedPathName:  -> @inspectedPath + "/" + @inspectedName
 
+    parentVirtualElement: ->
+      if @_parentVirtualNode instanceof ArtComponents.VirtualElement
+        @_parentVirtualNode
+      else @_parentVirtualNode?.parentVirtualElement
+
     propsLength: ->
       if @_propsLength >= 0
-        @_propsLength
-      else
-        @_propsLength = objectKeyCount @props
+            @_propsLength
+      else  @_propsLength = objectKeyCount @props
 
+  #####################
   @setter
     propsLength: (v)-> @_propsLength = v
 
@@ -75,19 +84,6 @@ class VirtualNode extends BaseClass
       (testString ? @inspectedName).match pattern
 
   #####################
-  # INSPECTIOn
-  #####################
-  findFirstElement: (pattern, options) ->
-    found = @findElements pattern, options
-    found?[0]
-
-  @getter
-    parentVirtualElement: ->
-      if @_parentVirtualNode instanceof ArtComponents.VirtualElement
-        @_parentVirtualNode
-      else @_parentVirtualNode?.parentVirtualElement
-
-  #####################
   # PRIVATE
   #####################
 
@@ -105,10 +101,10 @@ class VirtualNode extends BaseClass
       false IFF prop-count same && all props are propsEq
       propsEq - is it more overhead than its worth?
   _propsChanged: (virtualNode) ->
-    newProps = virtualNode.rawProps
+    newProps = virtualNode._rawProps
     _propsLength = 0
 
-    each v, k in-object @rawProps
+    each v, k in-object @_rawProps
       _propsLength++
       return true unless propsEq v, newProps[k]
 
